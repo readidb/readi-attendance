@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       throw new ApiError(`주간 잔업 가능시간을 초과합니다. 현재 신청 가능시간은 ${available}시간입니다.`, 409);
     }
 
-    const duplicateFormula = `AND(FIND(${formulaString(String(employee.employeeNo))},ARRAYJOIN({${FIELDS.overtime.employee}})),{${FIELDS.overtime.date}}=${formulaString(date)})`;
+    const duplicateFormula = `AND(ARRAYJOIN({${FIELDS.overtime.employee}})=${formulaString(String(employee.employeeNo))},{${FIELDS.overtime.date}}=${formulaString(date)})`;
     const duplicate = await listRecords(TABLES.overtime, { filterByFormula: duplicateFormula, maxRecords: 1 });
     if (duplicate.length) throw new ApiError("해당 날짜에 이미 등록된 잔업 신청이 있습니다.", 409);
 
@@ -50,3 +50,4 @@ export async function POST(request: NextRequest) {
     return apiError(error);
   }
 }
+

@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
     if (note.length > 300) throw new ApiError("비고는 300자 이내로 입력해 주세요.");
 
-    const duplicateFormula = `AND(FIND(${formulaString(String(employee.employeeNo))},ARRAYJOIN({${FIELDS.flexible.employee}})),{${FIELDS.flexible.date}}=${formulaString(date)})`;
+    const duplicateFormula = `AND(ARRAYJOIN({${FIELDS.flexible.employee}})=${formulaString(String(employee.employeeNo))},{${FIELDS.flexible.date}}=${formulaString(date)})`;
     const duplicate = await listRecords(TABLES.flexible, { filterByFormula: duplicateFormula, maxRecords: 1 });
     if (duplicate.length) throw new ApiError("해당 날짜에 이미 등록된 유연근무 신청이 있습니다.", 409);
 
@@ -36,3 +36,4 @@ export async function POST(request: NextRequest) {
     return apiError(error);
   }
 }
+

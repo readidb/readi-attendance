@@ -61,6 +61,10 @@ export const FIELDS = {
 } as const;
 
 export const FLEXIBLE_SCHEDULES = [
+  "05:00 ~ 14:00",
+  "05:30 ~ 14:30",
+  "06:00 ~ 15:00",
+  "06:30 ~ 15:30",
   "07:00 ~ 16:00",
   "07:30 ~ 16:30",
   "08:00 ~ 17:00",
@@ -72,3 +76,4 @@ export const FLEXIBLE_SCHEDULES = [
 
 export const LEAVE_TYPES = ["연차", "오전반차", "오후반차"] as const;
 export const SEOUL_TIME_ZONE = "Asia/Seoul";
+

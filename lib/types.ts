@@ -13,6 +13,7 @@ export interface Employee {
 
 export interface RequestItem {
   id: string;
+  createdAt: string;
   requestNo: string;
   category: "flexible" | "overtime" | "leave";
   typeLabel: string;

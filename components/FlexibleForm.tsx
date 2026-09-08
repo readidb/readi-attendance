@@ -46,6 +46,11 @@ export default function FlexibleForm({ today, onSuccess, onError }: Props) {
         </label>
         <label>비고<textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={300} placeholder="필요한 경우 입력해 주세요." /></label>
         <LoadingButton className="primary-button" type="submit" loading={loading}>유연근무 신청</LoadingButton>
+        <aside className="helper" aria-label="07시 이전 근무 안내">
+          <strong>07:00 이전 근무 안내</strong>
+          <p>07:00 이전 근무는 근로자의 자율적 선택이 아닌 회사의 지시(출장·외근·근무 등)에 따른 경우에만 인정됩니다.</p>
+          <p>신청은 유연근무와 동일하게 진행하고, 출장·외근 계획이 사전 승인된 문서 또는 근무 지시를 확인할 수 있는 Teams 캡처본 등을 BSC에 제출해 주세요.</p>
+        </aside>
       </form>
     </section>
   );

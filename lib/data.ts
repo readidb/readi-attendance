@@ -5,7 +5,7 @@ import { formulaString, listRecords, selectName } from "@/lib/airtable";
 import type { Employee, Notice, RequestItem } from "@/lib/types";
 
 function employeeFormula(employeeNo: number, fieldId: string): string {
-  return `FIND(${formulaString(String(employeeNo))},ARRAYJOIN({${fieldId}}))`;
+  return `ARRAYJOIN({${fieldId}})=${formulaString(String(employeeNo))}`;
 }
 
 function text(value: unknown): string {
@@ -16,21 +16,19 @@ export async function getEmployeeRequests(employeeNo: number): Promise<RequestIt
   const [flexible, overtime, leave] = await Promise.all([
     listRecords(TABLES.flexible, {
       filterByFormula: employeeFormula(employeeNo, FIELDS.flexible.employee),
-      maxRecords: 100,
     }),
     listRecords(TABLES.overtime, {
       filterByFormula: employeeFormula(employeeNo, FIELDS.overtime.employee),
-      maxRecords: 100,
     }),
     listRecords(TABLES.leave, {
       filterByFormula: employeeFormula(employeeNo, FIELDS.leave.employee),
-      maxRecords: 100,
     }),
   ]);
 
   const items: RequestItem[] = [
     ...flexible.map((record) => ({
       id: record.id,
+      createdAt: record.createdTime,
       requestNo: text(record.fields[FIELDS.flexible.requestNo]),
       category: "flexible" as const,
       typeLabel: "유연근무",
@@ -41,6 +39,7 @@ export async function getEmployeeRequests(employeeNo: number): Promise<RequestIt
     })),
     ...overtime.map((record) => ({
       id: record.id,
+      createdAt: record.createdTime,
       requestNo: text(record.fields[FIELDS.overtime.requestNo]),
       category: "overtime" as const,
       typeLabel: "잔업",
@@ -54,6 +53,7 @@ export async function getEmployeeRequests(employeeNo: number): Promise<RequestIt
       const days = Number(record.fields[FIELDS.leave.days] ?? 0);
       return {
         id: record.id,
+      createdAt: record.createdTime,
         requestNo: text(record.fields[FIELDS.leave.requestNo]),
         category: "leave" as const,
         typeLabel: selectName(record.fields[FIELDS.leave.type]) || "연차",
@@ -63,7 +63,7 @@ export async function getEmployeeRequests(employeeNo: number): Promise<RequestIt
     }),
   ];
 
-  return items.sort((a, b) => b.dateLabel.localeCompare(a.dateLabel)).slice(0, 100);
+  return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 100);
 }
 
 export async function getPublishedNotices(): Promise<Notice[]> {
@@ -94,3 +94,4 @@ export function publicEmployee(employee: Employee): Omit<Employee, "recordId"> {
   void _recordId;
   return safeEmployee;
 }
+

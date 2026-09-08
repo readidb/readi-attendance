@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
       throw new ApiError(`잔여 연차가 부족합니다. 현재 잔여 연차는 ${employee.remainingLeave}일입니다.`, 409);
     }
 
-    const employeeFormula = `FIND(${formulaString(String(employee.employeeNo))},ARRAYJOIN({${FIELDS.leave.employee}}))`;
-    const existing = await listRecords(TABLES.leave, { filterByFormula: employeeFormula, maxRecords: 100 });
+    const employeeFormula = `ARRAYJOIN({${FIELDS.leave.employee}})=${formulaString(String(employee.employeeNo))}`;
+    const existing = await listRecords(TABLES.leave, { filterByFormula: employeeFormula });
     const overlap = existing.some((record) => {
       const existingStart = String(record.fields[FIELDS.leave.startDate] ?? "");
       const existingEnd = String(record.fields[FIELDS.leave.endDate] ?? existingStart);
@@ -56,3 +56,4 @@ export async function POST(request: NextRequest) {
     return apiError(error);
   }
 }
+
