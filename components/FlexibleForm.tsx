@@ -3,13 +3,14 @@
 import { useState } from "react";
 import LoadingButton from "@/components/LoadingButton";
 import { FLEXIBLE_SCHEDULES } from "@/lib/constants";
+import { nearestFlexibleSchedule } from "@/lib/dates";
 
 type Props = { today: string; onSuccess: (message: string) => Promise<void>; onError: (message: string) => void };
 
 export default function FlexibleForm({ today, onSuccess, onError }: Props) {
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState(today);
-  const [schedule, setSchedule] = useState("08:00 ~ 17:00");
+  const [schedule, setSchedule] = useState(() => nearestFlexibleSchedule());
   const [note, setNote] = useState("");
 
   async function submit(event: React.FormEvent) {

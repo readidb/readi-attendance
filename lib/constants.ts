@@ -39,6 +39,7 @@ export const FIELDS = {
     actualHours: "fldilw0r9U5jTZ8yw",
     validationStatus: "fldNSuvzXuwnqxkv6",
     confirmedHours: "fld5Vp4ckWT0A886e",
+    createdAt: "flddj6JjzpxZjFMSM",
   },
   leave: {
     requestNo: "fldP6nESQKAgxuM8P",
@@ -74,6 +75,6 @@ export const FLEXIBLE_SCHEDULES = [
   "10:00 ~ 19:00",
 ] as const;
 
-export const LEAVE_TYPES = ["연차", "오전반차", "오후반차"] as const;
+export const LEAVE_TYPES = ["연차", "오전반차", "오후반차", "리프레시", "공가"] as const;
+export const STANDARD_SCHEDULE = "08:00 ~ 17:00";
 export const SEOUL_TIME_ZONE = "Asia/Seoul";
-

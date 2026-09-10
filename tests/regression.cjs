@@ -26,12 +26,15 @@ function load(file) {
   return mod.exports;
 }
 (async () => {
-  const { calculateOvertimeHours, countWeekdays } = load('lib/dates.ts');
+  const { calculateOvertimeHours, countWeekdays, nearestFlexibleSchedule, weekBounds } = load('lib/dates.ts');
   const { TABLES, FIELDS, FLEXIBLE_SCHEDULES } = load('lib/constants.ts');
   assert.equal(FLEXIBLE_SCHEDULES.length, 11);
   assert.equal(calculateOvertimeHours('05:00 ~ 14:00', '16:30', false), 2);
   assert.equal(calculateOvertimeHours('06:30 ~ 15:30', '18:00', true), 1);
   assert.equal(countWeekdays('2026-09-04', '2026-09-07'), 2);
+  assert.deepEqual(weekBounds('2026-09-10'), { start: '2026-09-07', end: '2026-09-13' });
+  assert.deepEqual(weekBounds('2026-09-13'), { start: '2026-09-07', end: '2026-09-13' });
+  assert.equal(nearestFlexibleSchedule(new Date('2026-09-10T22:42:00Z')), '07:30 ~ 16:30');
   fixtures[TABLES.flexible] = Array.from({ length: 101 }, (_, i) => ({
     id: `request-${i}`, createdTime: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
     fields: { [FIELDS.flexible.date]: i === 100 ? '2025-01-01' : '2026-12-01' },
