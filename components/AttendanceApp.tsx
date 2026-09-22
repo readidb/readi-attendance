@@ -10,7 +10,7 @@ import RequestHistory from "@/components/RequestHistory";
 import type { DashboardData } from "@/lib/types";
 
 type Tab = "home" | "flexible" | "overtime" | "leave" | "history";
-const tabs: Array<[Tab, string]> = [["home", "홈"], ["flexible", "유연근무"], ["overtime", "잔업"], ["leave", "연차"], ["history", "내역"]];
+const tabs: Array<[Tab, string]> = [["home", "내 근태"], ["flexible", "유연근무"], ["overtime", "잔업신청"], ["leave", "연차신청"], ["history", "신청내역"]];
 
 export default function AttendanceApp({
   initialData,
@@ -76,12 +76,12 @@ export default function AttendanceApp({
   return (
     <main className="app-shell">
       <header className="app-header">
-        <Image src="/readi-logo.png" width={1295} height={391} priority alt="READi Robust Machine" />
+        <div className="header-brand">
+          <Image src="/readi-logo.png" width={1295} height={391} priority alt="READi Robust Machine" />
+          <h1>{tabs.find(([value]) => value === tab)?.[1]}</h1>
+        </div>
         <button className="refresh-button" type="button" disabled={loading} onClick={() => void refresh()}>{loading ? "불러오는 중" : "새로고침"}</button>
       </header>
-      <div className="greeting">
-        <p>{employee.department} {employee.name} {employee.position} 님, 안녕하세요.</p>
-      </div>
 
       <div className="page-content">
         {tab === "home" && <HomeSummary data={data} onNavigate={setTab} />}
@@ -93,7 +93,7 @@ export default function AttendanceApp({
 
       <nav className="bottom-nav" aria-label="근태 메뉴">
         {tabs.map(([value, label]) => (
-          <button className={tab === value ? "active" : ""} key={value} type="button" onClick={() => { setTab(value); window.scrollTo({ top: 0, behavior: "smooth" }); }}>{label}</button>
+          <button className={tab === value ? "active" : ""} aria-current={tab === value ? "page" : undefined} key={value} type="button" onClick={() => { setTab(value); window.scrollTo({ top: 0, behavior: "smooth" }); }}>{label}</button>
         ))}
       </nav>
       {toast && <div className="toast" role="status">{toast}</div>}

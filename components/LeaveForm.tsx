@@ -58,8 +58,9 @@ export default function LeaveForm({ today, remainingLeave, onSuccess, onError }:
         {isRangeType && <label>종료일<input type="date" min={startDate} value={endDate} onChange={(event) => setEndDate(event.target.value)} required /></label>}
         <label>사유<textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={300} placeholder="연차 사용 사유를 입력해 주세요." required /></label>
         <div className={`calculation-box ${(deductsLeave && days > remainingLeave) || invalidRefresh ? "over" : ""}`}>
-          <span>사용 예정</span><strong>{days}일</strong>
-          {deductsLeave ? <><span>현재 잔여</span><strong>{remainingLeave}일</strong></> : <><span>연차 차감</span><strong>없음</strong></>}
+          <div className="calculation-stat"><span>신청 일수</span><strong>{days}<small>일</small></strong></div>
+          <div className="calculation-stat"><span>신청 후 잔여</span><strong>{deductsLeave ? Math.max(0, remainingLeave - days) : remainingLeave}<small>일</small></strong></div>
+          {!deductsLeave && <p className="calculation-note">{type}는 연차를 차감하지 않습니다.</p>}
           {deductsLeave && days > remainingLeave && <p>잔여 연차가 부족합니다.</p>}
           {invalidRefresh && <p>리프레시는 평일 기준 5일로 신청해 주세요.</p>}
         </div>
