@@ -63,7 +63,7 @@ export default function AttendanceApp({
     return (
       <main className="access-page">
         <section className="access-card">
-          <Image src="/readi-logo.svg" width={240} height={69} priority alt="READi" />
+          <Image src="/readi-logo.png" width={1295} height={391} priority alt="READi Robust Machine" />
           <h1>근태관리 시스템</h1>
           <p>{error || "개인 접속 링크를 통해 접속해 주세요."}</p>
           {!initialError && <button className="primary-button" type="button" onClick={() => void refresh()}>다시 시도</button>}
@@ -76,7 +76,7 @@ export default function AttendanceApp({
   return (
     <main className="app-shell">
       <header className="app-header">
-        <Image src="/readi-logo.svg" width={150} height={43} priority alt="READi" />
+        <Image src="/readi-logo.png" width={1295} height={391} priority alt="READi Robust Machine" />
         <button className="refresh-button" type="button" disabled={loading} onClick={() => void refresh()}>{loading ? "불러오는 중" : "새로고침"}</button>
       </header>
       <div className="greeting">
