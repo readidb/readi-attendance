@@ -6,6 +6,7 @@ const ts = require('typescript');
 const cache = new Map();
 const calls = [];
 const fixtures = {};
+const writes = [];
 function load(file) {
   if (cache.has(file)) return cache.get(file);
   const mod = { exports: {} };
@@ -14,7 +15,9 @@ function load(file) {
   }).outputText;
   const localRequire = (name) => {
     if (name === 'server-only') return {};
+    if (name === '@/lib/auth') return { requireActiveEmployee: async () => ({ employeeNo: 12, recordId: 'test-employee' }) };
     if (name === '@/lib/airtable') return {
+      createRecord: async (table, fields) => { writes.push({ table, fields }); return {}; },
       formulaString: (value) => `'${value}'`,
       selectName: (value) => typeof value === 'string' ? value : '',
       listRecords: async (table, options) => { calls.push(options); return fixtures[table] || []; },
@@ -46,5 +49,28 @@ function load(file) {
     assert.match(options.filterByFormula, /^ARRAYJOIN\(\{fld\w+\}\)='12'$/);
     assert.equal(options.maxRecords, undefined, 'fetch all pages before sorting');
   }
+  // Exercise the POST boundary without writing to the live Airtable base.
+  fixtures[TABLES.flexible] = [];
+  fixtures[TABLES.overtime] = [];
+  const { POST } = load('app/api/overtime/route.ts');
+  const submit = (mealFields) => POST({ json: async () => ({ date: '2026-09-23', endTime: '19:00', reason: '테스트', ...mealFields }) });
+  for (const internalMeal of [false, true]) {
+    for (const externalMeal of [false, true]) {
+      const response = await submit({ internalMeal, externalMeal });
+      assert.equal(response.status, 201);
+      const write = writes.at(-1);
+      assert.equal(write.fields.fldRuBu1RLnZmyvdA, internalMeal);
+      assert.equal(write.fields.fldqPuT69Sntumaio, externalMeal);
+      assert.equal((await response.json()).message, `${externalMeal ? 1 : 2}시간 잔업 신청이 등록되었습니다.`);
+    }
+  }
+  assert.equal((await submit({ meal: true })).status, 201);
+  assert.equal(writes.at(-1).fields.fldqPuT69Sntumaio, true);
+  assert.equal((await submit({ meal: true, externalMeal: false })).status, 201);
+  assert.equal(writes.at(-1).fields.fldqPuT69Sntumaio, false);
+  const writeCount = writes.length;
+  assert.equal((await submit({ internalMeal: 'true' })).status, 400);
+  assert.equal(writes.length, writeCount);
+  console.log('PASS: meal checkbox combinations, field mapping, legacy requests, boolean validation');
   console.log('PASS: early schedules, meal deduction, weekend exclusion, exact employee formula, newest 100 submissions');
 })().catch((error) => { console.error(error); process.exitCode = 1; });

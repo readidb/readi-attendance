@@ -344,3 +344,8 @@ img { max-width: 100%; }
   .calculation-stat { padding-right: 8px; }
   .calculation-stat + .calculation-stat { padding-left: 8px; }
 }
+
+.meal-options { min-width: 0; margin: 0; padding: 0; border: 0; }
+.meal-options legend { margin-bottom: 8px; padding: 0; font-size: 14px; font-weight: 700; }
+.meal-option-row { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.meal-option-row .checkbox-label { min-height: 44px; }

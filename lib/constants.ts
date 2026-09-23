@@ -34,7 +34,8 @@ export const FIELDS = {
     date: "fldXgf65zRLtGcOLP",
     endAt: "fldy9NgrFeokof0I2",
     hours: "fldGOYpqImp2o0rOp",
-    meal: "fldqPuT69Sntumaio",
+    internalMeal: "fldRuBu1RLnZmyvdA", // 사내식사 (앱: 사내배달)
+    externalMeal: "fldqPuT69Sntumaio", // 외부식사 (기존 식사여부)
     reason: "fldbymc5dvz4f90IO",
     actualHours: "fldilw0r9U5jTZ8yw",
     validationStatus: "fldNSuvzXuwnqxkv6",

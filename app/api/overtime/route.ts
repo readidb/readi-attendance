@@ -49,7 +49,14 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as Record<string, unknown>;
     const date = body.date;
     const endTime = body.endTime;
-    const meal = body.meal === true;
+    for (const key of ["internalMeal", "externalMeal", "meal"] as const) {
+      if (body[key] !== undefined && typeof body[key] !== "boolean") {
+        throw new ApiError("식사 종류 선택값을 확인해 주세요.");
+      }
+    }
+    const internalMeal = body.internalMeal === true;
+    // 배포 전에 열린 화면의 기존 meal 요청은 외부식사로 처리합니다.
+    const externalMeal = body.externalMeal === undefined ? body.meal === true : body.externalMeal === true;
     const reason = typeof body.reason === "string" ? body.reason.trim() : "";
 
     if (!isIsoDate(date)) throw new ApiError("잔업 날짜를 확인해 주세요.");
@@ -60,7 +67,7 @@ export async function POST(request: NextRequest) {
     if (reason.length > 300) throw new ApiError("장소/사유는 300자 이내로 입력해 주세요.");
 
     const { schedule, weeklyOvertime } = await getOvertimeContext(employee.employeeNo, date);
-    const requestedHours = calculateOvertimeHours(schedule, endTime, meal);
+    const requestedHours = calculateOvertimeHours(schedule, endTime, externalMeal);
     if (requestedHours < 1) throw new ApiError("계산되는 잔업시간이 1시간 이상이어야 합니다.");
     if (weeklyOvertime + requestedHours > 12) {
       const available = Math.max(0, 12 - weeklyOvertime);
@@ -76,7 +83,8 @@ export async function POST(request: NextRequest) {
       [FIELDS.overtime.schedule]: schedule,
       [FIELDS.overtime.date]: date,
       [FIELDS.overtime.endAt]: `${date}T${endTime}:00+09:00`,
-      [FIELDS.overtime.meal]: meal,
+      [FIELDS.overtime.internalMeal]: internalMeal,
+      [FIELDS.overtime.externalMeal]: externalMeal,
       [FIELDS.overtime.reason]: reason,
       [FIELDS.overtime.createdAt]: new Date().toISOString(),
     });
