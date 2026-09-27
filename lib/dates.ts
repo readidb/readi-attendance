@@ -23,14 +23,16 @@ export function calculateOvertimeHours(
   schedule: string,
   endTime: string,
   externalMeal: boolean,
+  internalMeal = false,
 ): number {
   const matched = FLEXIBLE_SCHEDULES.find((item) => item === schedule);
   if (!matched || !isTime(endTime)) return 0;
   const scheduleEnd = matched.slice(-5);
   const [baseHour, baseMinute] = scheduleEnd.split(":").map(Number);
   const [endHour, endMinute] = endTime.split(":").map(Number);
-  const minutes = endHour * 60 + endMinute - (baseHour * 60 + baseMinute) - (externalMeal ? 60 : 0);
-  return Math.max(0, Math.floor(minutes / 60));
+  const minutes = endHour * 60 + endMinute - (baseHour * 60 + baseMinute);
+  const roundedHours = Math.floor(Math.max(0, minutes) / 60);
+  return Math.max(0, roundedHours - (externalMeal ? 1 : internalMeal ? 0.5 : 0));
 }
 
 export function countWeekdays(start: string, end: string): number {

@@ -34,6 +34,10 @@ function load(file) {
   assert.equal(FLEXIBLE_SCHEDULES.length, 11);
   assert.equal(calculateOvertimeHours('05:00 ~ 14:00', '16:30', false), 2);
   assert.equal(calculateOvertimeHours('06:30 ~ 15:30', '18:00', true), 1);
+  assert.equal(calculateOvertimeHours('08:00 ~ 17:00', '19:30', false, true), 1.5);
+  assert.equal(calculateOvertimeHours('08:00 ~ 17:00', '18:00', false, true), 0.5);
+  assert.equal(calculateOvertimeHours('08:00 ~ 17:00', '19:30', true, true), 1);
+  assert.equal(calculateOvertimeHours('08:00 ~ 17:00', '17:30', false, true), 0);
   assert.equal(countWeekdays('2026-09-04', '2026-09-07'), 2);
   assert.deepEqual(weekBounds('2026-09-10'), { start: '2026-09-07', end: '2026-09-13' });
   assert.deepEqual(weekBounds('2026-09-13'), { start: '2026-09-07', end: '2026-09-13' });
@@ -61,9 +65,12 @@ function load(file) {
       const write = writes.at(-1);
       assert.equal(write.fields.fldRuBu1RLnZmyvdA, internalMeal);
       assert.equal(write.fields.fldqPuT69Sntumaio, externalMeal);
-      assert.equal((await response.json()).message, `${externalMeal ? 1 : 2}시간 잔업 신청이 등록되었습니다.`);
+      assert.equal((await response.json()).message, `${externalMeal ? 1 : internalMeal ? 1.5 : 2}시간 잔업 신청이 등록되었습니다.`);
     }
   }
+  const halfHourResponse = await POST({ json: async () => ({ date: '2026-09-23', endTime: '18:00', internalMeal: true, externalMeal: false, reason: '테스트' }) });
+  assert.equal(halfHourResponse.status, 201);
+  assert.equal((await halfHourResponse.json()).message, '0.5시간 잔업 신청이 등록되었습니다.');
   assert.equal((await submit({ meal: true })).status, 201);
   assert.equal(writes.at(-1).fields.fldqPuT69Sntumaio, true);
   assert.equal((await submit({ meal: true, externalMeal: false })).status, 201);

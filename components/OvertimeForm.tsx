@@ -22,7 +22,7 @@ export default function OvertimeForm({ today, weeklyOvertime, onSuccess, onError
   const [internalMeal, setInternalMeal] = useState(false);
   const [externalMeal, setExternalMeal] = useState(false);
   const [reason, setReason] = useState("");
-  const hours = calculateOvertimeHours(schedule, endTime, externalMeal);
+  const hours = calculateOvertimeHours(schedule, endTime, externalMeal, internalMeal);
   const afterTotal = dateWeeklyOvertime + hours;
 
   useEffect(() => {
@@ -68,7 +68,7 @@ export default function OvertimeForm({ today, weeklyOvertime, onSuccess, onError
   return (
     <section className="panel form-panel">
       <h2>잔업 신청</h2>
-      <p className="helper">외부식사 시간 1시간을 제외하고, 잔업은 1시간 단위로 계산합니다.</p>
+      <p className="helper">잔업을 1시간 단위로 내림한 뒤 사내배달은 0.5시간, 외부식사는 1시간을 차감합니다.</p>
       <form onSubmit={submit}>
         <label>날짜<input type="date" value={date} onChange={(event) => { setContextLoading(true); setDate(event.target.value); }} required /></label>
         <label>적용 근무시간<input value={contextLoading ? "불러오는 중" : schedule} readOnly aria-busy={contextLoading} /></label>
@@ -92,7 +92,7 @@ export default function OvertimeForm({ today, weeklyOvertime, onSuccess, onError
           <div className="calculation-stat"><span>신청 후 잔여</span><strong>{Math.max(0, 12 - afterTotal)}<small>h</small></strong></div>
           {afterTotal > 12 && <p>주간 잔업 가능시간을 초과하여 신청할 수 없습니다.</p>}
         </div>
-        <LoadingButton className="primary-button" type="submit" loading={loading} disabled={contextLoading || hours < 1 || afterTotal > 12}>잔업 신청</LoadingButton>
+        <LoadingButton className="primary-button" type="submit" loading={loading} disabled={contextLoading || hours <= 0 || afterTotal > 12}>잔업 신청</LoadingButton>
       </form>
     </section>
   );

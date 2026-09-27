@@ -67,8 +67,8 @@ export async function POST(request: NextRequest) {
     if (reason.length > 300) throw new ApiError("장소/사유는 300자 이내로 입력해 주세요.");
 
     const { schedule, weeklyOvertime } = await getOvertimeContext(employee.employeeNo, date);
-    const requestedHours = calculateOvertimeHours(schedule, endTime, externalMeal);
-    if (requestedHours < 1) throw new ApiError("계산되는 잔업시간이 1시간 이상이어야 합니다.");
+    const requestedHours = calculateOvertimeHours(schedule, endTime, externalMeal, internalMeal);
+    if (requestedHours <= 0) throw new ApiError("계산되는 잔업시간이 있어야 합니다.");
     if (weeklyOvertime + requestedHours > 12) {
       const available = Math.max(0, 12 - weeklyOvertime);
       throw new ApiError(`주간 잔업 가능시간을 초과합니다. 현재 신청 가능시간은 ${available}시간입니다.`, 409);
