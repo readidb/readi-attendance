@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./visitors.css";
 
 export const metadata: Metadata = {
   title: "READi 근태관리",

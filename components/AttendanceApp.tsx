@@ -7,10 +7,11 @@ import HomeSummary from "@/components/HomeSummary";
 import LeaveForm from "@/components/LeaveForm";
 import OvertimeForm from "@/components/OvertimeForm";
 import RequestHistory from "@/components/RequestHistory";
+import VisitorManager from "@/components/VisitorManager";
 import type { DashboardData } from "@/lib/types";
 
-type Tab = "home" | "flexible" | "overtime" | "leave" | "history";
-const tabs: Array<[Tab, string]> = [["home", "내 근태"], ["flexible", "유연근무"], ["overtime", "잔업신청"], ["leave", "연차신청"], ["history", "신청내역"]];
+type Tab = "home" | "flexible" | "overtime" | "leave" | "visitors" | "history";
+const tabs: Array<[Tab, string]> = [["home", "내 근태"], ["flexible", "유연근무"], ["overtime", "잔업신청"], ["leave", "연차신청"], ["visitors", "방문예약"], ["history", "신청내역"]];
 
 export default function AttendanceApp({
   initialData,
@@ -88,6 +89,7 @@ export default function AttendanceApp({
         {tab === "flexible" && <FlexibleForm today={initialToday} onSuccess={completed} onError={setToast} />}
         {tab === "overtime" && <OvertimeForm today={initialToday} weeklyOvertime={employee.weeklyOvertime} onSuccess={completed} onError={setToast} />}
         {tab === "leave" && <LeaveForm today={initialToday} remainingLeave={employee.remainingLeave} onSuccess={completed} onError={setToast} />}
+        {tab === "visitors" && <VisitorManager today={initialToday} onNotify={setToast} />}
         {tab === "history" && <RequestHistory requests={data.requests} />}
       </div>
 

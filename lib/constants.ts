@@ -7,6 +7,38 @@ export const TABLES = {
   notices: "tblibO9m4g0oFb3rs",
 } as const;
 
+export const VISITOR_BASE_ID = "appEGOuVIDQdWnZmJ";
+
+export const VISITOR_TABLES = {
+  reservations: "tbl8jebI2LbBa9iQ5",
+  master: "tblnoO5eo1MYC4tAh",
+} as const;
+
+export const VISITOR_FIELDS = {
+  reservations: {
+    reservationNo: "fldBbFLextAy5JnX9",
+    visitAt: "fld0iZ51C0pdNTXsT",
+    location: "fldNlzdLgtsdeVJJ1",
+    department: "fldIRAmHhIbmG9euY",
+    host: "flddCLhdSdyqzVaEN",
+    hostPhone: "fldCIxA08FHHGFfvx",
+    company: "fldsl0dLziFcnYIha",
+    vehicleNo: "fldBgpV1MmjqIoYD3",
+    headcount: "fldOx0oJWgFOxqziD",
+    purpose: "fldxa9TvDpte0yl7q",
+    note: "fldog2yVmft5EhuZ3",
+    appliedDate: "fld6MMFOqY6CXDywH",
+  },
+  master: {
+    employeeNo: "fldpK9rmPWq2vMK5E",
+    name: "fldeSHye8ZBp3popE",
+    department: "fldNyKSyDWNgGnAQf",
+    position: "fldLXaOe1MnlYRnvH",
+    phone: "fldpZe5dWwVT5kdjJ",
+    email: "fldx0Iub0QIs935M4",
+  },
+} as const;
+
 export const FIELDS = {
   master: {
     employeeNo: "fldVteukRJwty5Cn1",

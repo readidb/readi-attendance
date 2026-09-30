@@ -2,7 +2,7 @@ import type { DashboardData } from "@/lib/types";
 
 type Props = {
   data: DashboardData;
-  onNavigate: (tab: "flexible" | "overtime" | "leave") => void;
+  onNavigate: (tab: "flexible" | "overtime" | "leave" | "visitors") => void;
 };
 
 export default function HomeSummary({ data, onNavigate }: Props) {
@@ -13,6 +13,12 @@ export default function HomeSummary({ data, onNavigate }: Props) {
 
   return (
     <div className="stack">
+      {data.todayVisitorCount > 0 && (
+        <button className="visitor-alert" type="button" onClick={() => onNavigate("visitors")}>
+          오늘 담당 방문 예약이 {data.todayVisitorCount}건 있습니다.
+          <span>확인하기</span>
+        </button>
+      )}
       <section className="weekly-summary" aria-label="이번 주 근무현황">
         <p className="summary-eyebrow">이번 주 근무현황</p>
         <h2 className="summary-greeting">{employee.department} {employee.name} {employee.position} 님, 안녕하세요.</h2>
@@ -60,4 +66,3 @@ export default function HomeSummary({ data, onNavigate }: Props) {
     </div>
   );
 }
-
