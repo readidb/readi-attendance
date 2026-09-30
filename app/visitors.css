@@ -1,5 +1,3 @@
-.bottom-nav { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-
 .visitor-alert {
   display: flex;
   align-items: center;
@@ -297,7 +295,6 @@
 }
 
 @media (max-width: 440px) {
-  .bottom-nav button { font-size: 10px; }
   .visitor-section { padding: 13px 10px; }
   .calendar-weekdays, .calendar-grid { gap: 3px; }
   .calendar-grid button { border-radius: 7px; font-size: 13px; }

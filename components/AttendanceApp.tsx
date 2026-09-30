@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import FlexibleForm from "@/components/FlexibleForm";
 import HomeSummary from "@/components/HomeSummary";
 import LeaveForm from "@/components/LeaveForm";
@@ -27,6 +27,28 @@ export default function AttendanceApp({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(initialError || "");
   const [toast, setToast] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function closeOutside(event: PointerEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    }
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [menuOpen]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -93,11 +115,18 @@ export default function AttendanceApp({
         {tab === "history" && <RequestHistory requests={data.requests} />}
       </div>
 
-      <nav className="bottom-nav" aria-label="근태 메뉴">
-        {tabs.map(([value, label]) => (
-          <button className={tab === value ? "active" : ""} aria-current={tab === value ? "page" : undefined} key={value} type="button" onClick={() => { setTab(value); window.scrollTo({ top: 0, behavior: "smooth" }); }}>{label}</button>
-        ))}
-      </nav>
+      <div className="floating-menu" ref={menuRef}>
+        {menuOpen && (
+          <nav className="floating-menu-panel" id="attendance-menu" aria-label="전체 메뉴">
+            {tabs.map(([value, label]) => (
+              <button className={tab === value ? "active" : ""} aria-current={tab === value ? "page" : undefined} key={value} type="button" onClick={() => { setMenuOpen(false); setTab(value); window.scrollTo({ top: 0, behavior: "smooth" }); }}>{label}</button>
+            ))}
+          </nav>
+        )}
+        <button className="floating-menu-button" ref={menuButtonRef} type="button" aria-label={menuOpen ? "전체 메뉴 닫기" : "전체 메뉴 열기"} aria-expanded={menuOpen} aria-controls={menuOpen ? "attendance-menu" : undefined} onClick={() => setMenuOpen((current) => !current)}>
+          <span aria-hidden="true">···</span>
+        </button>
+      </div>
       {toast && <div className="toast" role="status">{toast}</div>}
     </main>
   );
