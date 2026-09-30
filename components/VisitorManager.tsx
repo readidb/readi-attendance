@@ -163,10 +163,23 @@ function HostPicker({
 function ReservationCard({ item, onOpen }: { item: VisitorReservation; onOpen: () => void }) {
   return (
     <button className={`visitor-list-item${item.cancelled ? " cancelled" : ""}`} type="button" onClick={onOpen}>
-      <span className="visitor-list-time">{item.visitDate} {item.visitTime}</span>
-      <strong>{item.company}</strong>
-      <span>{item.purpose}</span>
-      <small>{item.location} · {item.hostNames.join(", ") || "담당자 미지정"} · {item.headcount || 1}명</small>
+      <span className="visitor-list-time">방문일시 · {item.visitDate} {item.visitTime}</span>
+      <span className="visitor-card-group">
+        <span className="visitor-card-heading">방문자</span>
+        <span className="visitor-card-row"><span className="visitor-card-label">방문업체</span><strong className="visitor-card-value">{item.company || "-"}</strong></span>
+        <span className="visitor-card-row"><span className="visitor-card-label">방문목적</span><span className="visitor-card-value">{item.purpose || "-"}</span></span>
+        <span className="visitor-card-row"><span className="visitor-card-label">방문인원</span><span className="visitor-card-value">{item.headcount || 1}명</span></span>
+        {item.vehicleNo && <span className="visitor-card-row"><span className="visitor-card-label">차량번호</span><span className="visitor-card-value">{item.vehicleNo}</span></span>}
+        {item.note && <span className="visitor-card-row"><span className="visitor-card-label">비고</span><span className="visitor-card-value">{item.note}</span></span>}
+      </span>
+      <span className="visitor-card-group">
+        <span className="visitor-card-heading">방문장소</span>
+        <span className="visitor-card-row"><span className="visitor-card-label">장소</span><span className="visitor-card-value">{item.location || "-"}</span></span>
+      </span>
+      <span className="visitor-card-group">
+        <span className="visitor-card-heading">담당자</span>
+        <span className="visitor-card-row"><span className="visitor-card-label">담당자</span><span className="visitor-card-value">{item.hostNames.join(", ") || "미지정"}</span></span>
+      </span>
       {item.cancelled && <em className="visitor-cancel-badge">예약취소</em>}
     </button>
   );

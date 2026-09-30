@@ -134,6 +134,13 @@
 .visitor-list-time, .visitor-list-item small { color: var(--muted); font-size: 12px; }
 .visitor-list-item strong { color: var(--navy); font-size: 15px; }
 .visitor-list-item > span:not(.visitor-list-time) { font-size: 13px; line-height: 1.45; }
+.visitor-list-item .visitor-list-time { padding-right: 65px; line-height: 1.5; }
+.visitor-card-group { display: grid; min-width: 0; gap: 7px; padding-top: 10px; }
+.visitor-card-group + .visitor-card-group { margin-top: 5px; border-top: 1px solid var(--line); }
+.visitor-card-heading { color: var(--navy); font-size: 12px; font-weight: 800; }
+.visitor-card-row { display: grid; min-width: 0; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; align-items: start; }
+.visitor-card-label { color: var(--muted); font-size: 12px; font-weight: 600; }
+.visitor-card-value { min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; font-size: 13px; }
 .visitor-cancel-badge {
   position: absolute;
   top: 12px;
