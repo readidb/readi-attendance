@@ -60,15 +60,16 @@ export interface VisitorReservation {
   visitTime: string;
   location: string;
   department: string;
-  hostRecordId: string;
-  hostName: string;
-  hostPhone: string;
+  hostRecordIds: string[];
+  hostNames: string[];
+  hostPhones: string[];
   company: string;
   vehicleNo: string;
   headcount: number;
   purpose: string;
   note: string;
   appliedDate: string;
+  cancelled: boolean;
 }
 
 export interface VisitorData {

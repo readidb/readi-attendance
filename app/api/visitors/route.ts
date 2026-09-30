@@ -14,7 +14,7 @@ type ReservationInput = {
   visitDate: string;
   visitTime: string;
   location: string;
-  hostRecordId: string;
+  hostRecordIds: string[];
   company: string;
   vehicleNo: string;
   headcount: number;
@@ -26,11 +26,16 @@ function cleanText(value: unknown, maxLength: number): string {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
+function cleanHostIds(value: unknown, fallback?: unknown): string[] {
+  const values = Array.isArray(value) ? value : fallback ? [fallback] : [];
+  return [...new Set(values.map((item) => cleanText(item, 40)).filter(Boolean))].slice(0, 20);
+}
+
 function parseInput(body: Record<string, unknown>): ReservationInput {
   const visitDate = body.visitDate;
   const visitTime = body.visitTime;
   const location = cleanText(body.location, 100);
-  const hostRecordId = cleanText(body.hostRecordId, 40);
+  const hostRecordIds = cleanHostIds(body.hostRecordIds, body.hostRecordId);
   const company = cleanText(body.company, 150);
   const vehicleNo = cleanText(body.vehicleNo, 50);
   const purpose = cleanText(body.purpose, 500);
@@ -40,25 +45,30 @@ function parseInput(body: Record<string, unknown>): ReservationInput {
   if (!isIsoDate(visitDate)) throw new ApiError("방문일자를 확인해 주세요.");
   if (!isTime(visitTime)) throw new ApiError("방문시간을 확인해 주세요.");
   if (!location) throw new ApiError("방문장소를 입력해 주세요.");
-  if (!hostRecordId) throw new ApiError("담당자를 선택해 주세요.");
+  if (hostRecordIds.length === 0) throw new ApiError("담당자를 1명 이상 선택해 주세요.");
   if (!company) throw new ApiError("방문업체를 입력해 주세요.");
   if (!Number.isInteger(headcount) || headcount < 1 || headcount > 100) {
     throw new ApiError("방문인원은 1명 이상 100명 이하로 입력해 주세요.");
   }
   if (!purpose) throw new ApiError("방문목적을 입력해 주세요.");
-  return { visitDate, visitTime, location, hostRecordId, company, vehicleNo, headcount, purpose, note };
+  return { visitDate, visitTime, location, hostRecordIds, company, vehicleNo, headcount, purpose, note };
 }
 
-async function validateHost(hostRecordId: string) {
-  const host = await getRecord(VISITOR_TABLES.master, hostRecordId, VISITOR_BASE_ID, visitorAirtableToken());
-  if (!host) throw new ApiError("선택한 담당자를 확인할 수 없습니다.");
+async function validateHosts(hostRecordIds: string[]) {
+  const hosts = await Promise.all(hostRecordIds.map((hostRecordId) => getRecord(
+    VISITOR_TABLES.master,
+    hostRecordId,
+    VISITOR_BASE_ID,
+    visitorAirtableToken(),
+  )));
+  if (hosts.some((host) => !host)) throw new ApiError("선택한 담당자를 확인할 수 없습니다.");
 }
 
 function toFields(input: ReservationInput): Record<string, unknown> {
   return {
     [VISITOR_FIELDS.reservations.visitAt]: `${input.visitDate}T${input.visitTime}:00+09:00`,
     [VISITOR_FIELDS.reservations.location]: input.location,
-    [VISITOR_FIELDS.reservations.host]: [input.hostRecordId],
+    [VISITOR_FIELDS.reservations.host]: input.hostRecordIds,
     [VISITOR_FIELDS.reservations.company]: input.company,
     [VISITOR_FIELDS.reservations.vehicleNo]: input.vehicleNo,
     [VISITOR_FIELDS.reservations.headcount]: input.headcount,
@@ -91,7 +101,7 @@ export async function POST(request: NextRequest) {
     const employee = await requireActiveEmployee();
     if (!employee) return unauthorized();
     const input = parseInput((await request.json()) as Record<string, unknown>);
-    await validateHost(input.hostRecordId);
+    await validateHosts(input.hostRecordIds);
     await createRecord(VISITOR_TABLES.reservations, {
       ...toFields(input),
       [VISITOR_FIELDS.reservations.appliedDate]: todayInSeoul(),
@@ -111,8 +121,26 @@ export async function PATCH(request: NextRequest) {
     if (!id) throw new ApiError("수정할 예약을 확인할 수 없습니다.");
     const existing = await getRecord(VISITOR_TABLES.reservations, id, VISITOR_BASE_ID, visitorAirtableToken());
     if (!existing) throw new ApiError("예약을 찾을 수 없습니다.", 404);
+
+    if (body.action === "cancel") {
+      if (existing.fields[VISITOR_FIELDS.reservations.cancelled] === true) {
+        return NextResponse.json({ ok: true, message: "이미 취소된 방문 예약입니다." });
+      }
+      await updateRecord(
+        VISITOR_TABLES.reservations,
+        id,
+        { [VISITOR_FIELDS.reservations.cancelled]: true },
+        VISITOR_BASE_ID,
+        visitorAirtableToken(),
+      );
+      return NextResponse.json({ ok: true, message: "방문 예약이 취소되었습니다." });
+    }
+
+    if (existing.fields[VISITOR_FIELDS.reservations.cancelled] === true) {
+      throw new ApiError("취소된 예약은 수정할 수 없습니다.");
+    }
     const input = parseInput(body);
-    await validateHost(input.hostRecordId);
+    await validateHosts(input.hostRecordIds);
     await updateRecord(VISITOR_TABLES.reservations, id, toFields(input), VISITOR_BASE_ID, visitorAirtableToken());
     return NextResponse.json({ ok: true, message: "방문 예약이 수정되었습니다." });
   } catch (error) {

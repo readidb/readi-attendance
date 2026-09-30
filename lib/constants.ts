@@ -27,6 +27,7 @@ export const VISITOR_FIELDS = {
     headcount: "fldOx0oJWgFOxqziD",
     purpose: "fldxa9TvDpte0yl7q",
     note: "fldog2yVmft5EhuZ3",
+    cancelled: "flded5ngp12zKmRVl",
     appliedDate: "fld6MMFOqY6CXDywH",
   },
   master: {
@@ -66,8 +67,8 @@ export const FIELDS = {
     date: "fldXgf65zRLtGcOLP",
     endAt: "fldy9NgrFeokof0I2",
     hours: "fldGOYpqImp2o0rOp",
-    internalMeal: "fldRuBu1RLnZmyvdA", // 사내식사 (앱: 사내배달)
-    externalMeal: "fldqPuT69Sntumaio", // 외부식사 (기존 식사여부)
+    internalMeal: "fldRuBu1RLnZmyvdA",
+    externalMeal: "fldqPuT69Sntumaio",
     reason: "fldbymc5dvz4f90IO",
     actualHours: "fldilw0r9U5jTZ8yw",
     validationStatus: "fldNSuvzXuwnqxkv6",

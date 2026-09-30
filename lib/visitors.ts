@@ -1,6 +1,6 @@
 import "server-only";
 
-import { firstLinkedValue, listRecords, selectName } from "@/lib/airtable";
+import { listRecords, selectName } from "@/lib/airtable";
 import {
   VISITOR_BASE_ID,
   VISITOR_FIELDS,
@@ -16,6 +16,18 @@ export function visitorAirtableToken(): string {
 
 function text(value: unknown): string {
   return value == null ? "" : String(value);
+}
+
+function linkedRecordIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (typeof item === "string") return item ? [item] : [];
+    if (item && typeof item === "object" && "id" in item) {
+      const id = String((item as { id?: unknown }).id || "");
+      return id ? [id] : [];
+    }
+    return [];
+  });
 }
 
 function dateTimeParts(value: unknown): { date: string; time: string } {
@@ -55,11 +67,11 @@ function mapReservation(
   hostsById: Map<string, VisitorHost>,
 ): VisitorReservation {
   const fields = record.fields;
-  const linkedHost = Array.isArray(fields[VISITOR_FIELDS.reservations.host])
-    ? (fields[VISITOR_FIELDS.reservations.host] as Array<string | { id?: string }>)[0]
-    : undefined;
-  const hostRecordId = typeof linkedHost === "string" ? linkedHost : linkedHost?.id || "";
-  const host = hostsById.get(hostRecordId);
+  const hostRecordIds = linkedRecordIds(fields[VISITOR_FIELDS.reservations.host]);
+  const hosts = hostRecordIds.flatMap((id) => {
+    const host = hostsById.get(id);
+    return host ? [host] : [];
+  });
   const { date, time } = dateTimeParts(fields[VISITOR_FIELDS.reservations.visitAt]);
   return {
     id: record.id,
@@ -68,15 +80,16 @@ function mapReservation(
     visitTime: time,
     location: text(fields[VISITOR_FIELDS.reservations.location]),
     department: text(fields[VISITOR_FIELDS.reservations.department]),
-    hostRecordId,
-    hostName: host?.name || firstLinkedValue(fields[VISITOR_FIELDS.reservations.host]),
-    hostPhone: host?.phone || text(fields[VISITOR_FIELDS.reservations.hostPhone]),
+    hostRecordIds,
+    hostNames: hosts.map((host) => host.name),
+    hostPhones: hosts.map((host) => host.phone).filter(Boolean),
     company: text(fields[VISITOR_FIELDS.reservations.company]),
     vehicleNo: text(fields[VISITOR_FIELDS.reservations.vehicleNo]),
     headcount: Number(fields[VISITOR_FIELDS.reservations.headcount] || 0),
     purpose: text(fields[VISITOR_FIELDS.reservations.purpose]),
     note: text(fields[VISITOR_FIELDS.reservations.note]),
     appliedDate: text(fields[VISITOR_FIELDS.reservations.appliedDate]),
+    cancelled: fields[VISITOR_FIELDS.reservations.cancelled] === true,
   };
 }
 
@@ -109,5 +122,5 @@ export async function getTodayVisitorCount(employeeNo: number, today: string): P
   const currentHost = hosts.find((host) => host.employeeNo === employeeNo);
   if (!currentHost) return 0;
   const reservations = await getVisitorReservations(hosts);
-  return reservations.filter((item) => item.hostRecordId === currentHost.recordId && item.visitDate === today).length;
+  return reservations.filter((item) => !item.cancelled && item.hostRecordIds.includes(currentHost.recordId) && item.visitDate === today).length;
 }
