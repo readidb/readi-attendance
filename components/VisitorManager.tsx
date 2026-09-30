@@ -107,7 +107,9 @@ function HostPicker({
   }
 
   return (
-    <div className="host-picker">
+    <div className="host-picker" onBlur={(event) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
+    }}>
       {selectedHosts.length > 0 && (
         <div className="host-chips" aria-label="선택된 담당자">
           {selectedHosts.map((host) => (
@@ -121,6 +123,8 @@ function HostPicker({
       <div className="host-combobox">
         <input
           role="combobox"
+          aria-label="담당자 검색"
+          aria-autocomplete="list"
           aria-expanded={open}
           aria-controls="visitor-host-options"
           value={query}

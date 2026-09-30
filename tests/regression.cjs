@@ -80,4 +80,33 @@ function load(file) {
   assert.equal(writes.length, writeCount);
   console.log('PASS: meal checkbox combinations, field mapping, legacy requests, boolean validation');
   console.log('PASS: early schedules, meal deduction, weekend exclusion, exact employee formula, newest 100 submissions');
+  // Visitor history must still include current reservations after 500 older rows.
+  const { VISITOR_TABLES, VISITOR_FIELDS } = load('lib/constants.ts');
+  const vf = VISITOR_FIELDS.reservations;
+  const hf = VISITOR_FIELDS.master;
+  process.env.VISITOR_AIRTABLE_TOKEN = 'local-test-only';
+  fixtures[VISITOR_TABLES.master] = [
+    { id: 'host-one', fields: { [hf.employeeNo]: 12, [hf.name]: '담당자1', [hf.phone]: 'test-one' } },
+    { id: 'host-two', fields: { [hf.employeeNo]: 13, [hf.name]: '담당자2', [hf.phone]: 'test-two' } },
+  ];
+  fixtures[VISITOR_TABLES.reservations] = Array.from({ length: 500 }, (_, i) => ({
+    id: `old-visitor-${i}`, fields: { [vf.visitAt]: '2026-01-01T01:00:00Z', [vf.host]: ['host-one'] },
+  }));
+  fixtures[VISITOR_TABLES.reservations].push(
+    { id: 'current-visitor', fields: { [vf.visitAt]: '2026-09-29T15:30:00Z', [vf.host]: ['host-one', { id: 'host-two' }] } },
+    { id: 'cancelled-visitor', fields: { [vf.visitAt]: '2026-09-29T15:30:00Z', [vf.host]: ['host-one'], [vf.cancelled]: true } },
+  );
+  const visitor = load('lib/visitors.ts');
+  const hosts = await visitor.getVisitorHosts();
+  const mapped = await visitor.getVisitorReservations(hosts);
+  assert.equal(calls.at(-1).maxRecords, undefined, 'visitor history must fetch every page');
+  assert.equal(mapped.length, 502);
+  assert.equal(mapped[500].visitDate, '2026-09-30');
+  assert.equal(mapped[500].visitTime, '00:30');
+  assert.deepEqual(mapped[500].hostNames, ['담당자1', '담당자2']);
+  assert.deepEqual(mapped[500].hostPhones, ['test-one', 'test-two']);
+  assert.equal(mapped[501].cancelled, true);
+  assert.equal(await visitor.getTodayVisitorCount(12, '2026-09-30'), 1);
+  assert.equal(await visitor.getTodayVisitorCount(13, '2026-09-30'), 1);
+  console.log('PASS: visitor pagination, Seoul date rollover, multiple hosts, cancelled notification exclusion');
 })().catch((error) => { console.error(error); process.exitCode = 1; });

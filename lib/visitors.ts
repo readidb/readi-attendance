@@ -110,7 +110,6 @@ export async function getVisitorReservations(hosts?: VisitorHost[]): Promise<Vis
   const records = await listRecords(VISITOR_TABLES.reservations, {
     baseId: VISITOR_BASE_ID,
     token: visitorAirtableToken(),
-    maxRecords: 500,
     sortField: VISITOR_FIELDS.reservations.visitAt,
     sortDirection: "asc",
   });
