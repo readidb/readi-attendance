@@ -8,7 +8,7 @@ import {
   VISITOR_TABLES,
 } from "@/lib/constants";
 import { isIsoDate, isTime, todayInSeoul } from "@/lib/dates";
-import { getVisitorHosts, getVisitorReservations } from "@/lib/visitors";
+import { getVisitorHosts, getVisitorReservations, visitorAirtableToken } from "@/lib/visitors";
 
 type ReservationInput = {
   visitDate: string;
@@ -50,7 +50,7 @@ function parseInput(body: Record<string, unknown>): ReservationInput {
 }
 
 async function validateHost(hostRecordId: string) {
-  const host = await getRecord(VISITOR_TABLES.master, hostRecordId, VISITOR_BASE_ID);
+  const host = await getRecord(VISITOR_TABLES.master, hostRecordId, VISITOR_BASE_ID, visitorAirtableToken());
   if (!host) throw new ApiError("선택한 담당자를 확인할 수 없습니다.");
 }
 
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     await createRecord(VISITOR_TABLES.reservations, {
       ...toFields(input),
       [VISITOR_FIELDS.reservations.appliedDate]: todayInSeoul(),
-    }, VISITOR_BASE_ID);
+    }, VISITOR_BASE_ID, visitorAirtableToken());
     return NextResponse.json({ ok: true, message: "방문 예약이 등록되었습니다." }, { status: 201 });
   } catch (error) {
     return apiError(error);
@@ -109,11 +109,11 @@ export async function PATCH(request: NextRequest) {
     const body = (await request.json()) as Record<string, unknown>;
     const id = cleanText(body.id, 40);
     if (!id) throw new ApiError("수정할 예약을 확인할 수 없습니다.");
-    const existing = await getRecord(VISITOR_TABLES.reservations, id, VISITOR_BASE_ID);
+    const existing = await getRecord(VISITOR_TABLES.reservations, id, VISITOR_BASE_ID, visitorAirtableToken());
     if (!existing) throw new ApiError("예약을 찾을 수 없습니다.", 404);
     const input = parseInput(body);
     await validateHost(input.hostRecordId);
-    await updateRecord(VISITOR_TABLES.reservations, id, toFields(input), VISITOR_BASE_ID);
+    await updateRecord(VISITOR_TABLES.reservations, id, toFields(input), VISITOR_BASE_ID, visitorAirtableToken());
     return NextResponse.json({ ok: true, message: "방문 예약이 수정되었습니다." });
   } catch (error) {
     return apiError(error);

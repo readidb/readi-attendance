@@ -8,6 +8,12 @@ import {
 } from "@/lib/constants";
 import type { AirtableRecord, VisitorHost, VisitorReservation } from "@/lib/types";
 
+export function visitorAirtableToken(): string {
+  const token = process.env.VISITOR_AIRTABLE_TOKEN || process.env.AIRTABLE_TOKEN;
+  if (!token) throw new Error("방문자 Airtable 토큰이 설정되지 않았습니다.");
+  return token;
+}
+
 function text(value: unknown): string {
   return value == null ? "" : String(value);
 }
@@ -77,6 +83,7 @@ function mapReservation(
 export async function getVisitorHosts(): Promise<VisitorHost[]> {
   const records = await listRecords(VISITOR_TABLES.master, {
     baseId: VISITOR_BASE_ID,
+    token: visitorAirtableToken(),
     maxRecords: 200,
     sortField: VISITOR_FIELDS.master.name,
     sortDirection: "asc",
@@ -89,6 +96,7 @@ export async function getVisitorReservations(hosts?: VisitorHost[]): Promise<Vis
   const hostsById = new Map(resolvedHosts.map((host) => [host.recordId, host]));
   const records = await listRecords(VISITOR_TABLES.reservations, {
     baseId: VISITOR_BASE_ID,
+    token: visitorAirtableToken(),
     maxRecords: 500,
     sortField: VISITOR_FIELDS.reservations.visitAt,
     sortDirection: "asc",

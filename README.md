@@ -55,11 +55,13 @@ cp .env.example .env.local
 ```env
 AIRTABLE_TOKEN=
 AIRTABLE_BASE_ID=app4nAAb3cL0K8qmB
+VISITOR_AIRTABLE_TOKEN=
 SESSION_SECRET=
 ```
 
 - `AIRTABLE_TOKEN`: 대상 Base에 대한 읽기·레코드 쓰기 권한이 있는 Airtable PAT
 - `AIRTABLE_BASE_ID`: `READi 2026근태관리` Base ID
+- `VISITOR_AIRTABLE_TOKEN`: `READi 방문자관리` Base 읽기·레코드 쓰기 권한이 있는 PAT
 - `SESSION_SECRET`: 32자 이상의 예측 불가능한 임의 문자열
 
 실제 값은 GitHub에 커밋하지 않습니다. Vercel에서는 새 Preview 프로젝트의 Environment Variables에 등록합니다.

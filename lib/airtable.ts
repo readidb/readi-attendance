@@ -4,8 +4,8 @@ import type { AirtableRecord } from "@/lib/types";
 
 const AIRTABLE_API = "https://api.airtable.com/v0";
 
-function config(baseIdOverride?: string) {
-  const token = process.env.AIRTABLE_TOKEN;
+function config(baseIdOverride?: string, tokenOverride?: string) {
+  const token = tokenOverride || process.env.AIRTABLE_TOKEN;
   const baseId = baseIdOverride || process.env.AIRTABLE_BASE_ID;
   if (!token || !baseId) {
     throw new Error("Airtable 환경변수가 설정되지 않았습니다.");
@@ -18,8 +18,9 @@ async function airtableFetch(
   init?: RequestInit,
   attempt = 0,
   baseIdOverride?: string,
+  tokenOverride?: string,
 ): Promise<Response> {
-  const { token, baseId } = config(baseIdOverride);
+  const { token, baseId } = config(baseIdOverride, tokenOverride);
   const response = await fetch(`${AIRTABLE_API}/${baseId}/${path}`, {
     ...init,
     headers: {
@@ -31,7 +32,7 @@ async function airtableFetch(
   });
   if (response.status === 429 && attempt < 3) {
     await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
-    return airtableFetch(path, init, attempt + 1, baseIdOverride);
+    return airtableFetch(path, init, attempt + 1, baseIdOverride, tokenOverride);
   }
   if (!response.ok) {
     const detail = await response.text();
@@ -50,6 +51,7 @@ export async function listRecords(
     sortField?: string;
     sortDirection?: "asc" | "desc";
     baseId?: string;
+    token?: string;
   } = {},
 ): Promise<AirtableRecord[]> {
   const params = new URLSearchParams();
@@ -66,7 +68,7 @@ export async function listRecords(
   let offset: string | undefined;
   do {
     if (offset) params.set("offset", offset);
-    const response = await airtableFetch(`${tableId}?${params.toString()}`, undefined, 0, options.baseId);
+    const response = await airtableFetch(`${tableId}?${params.toString()}`, undefined, 0, options.baseId, options.token);
     const data = (await response.json()) as { records: AirtableRecord[]; offset?: string };
     records.push(...data.records);
     offset = data.offset;
@@ -78,8 +80,9 @@ export async function getRecord(
   tableId: string,
   recordId: string,
   baseIdOverride?: string,
+  tokenOverride?: string,
 ): Promise<AirtableRecord | null> {
-  const { token, baseId } = config(baseIdOverride);
+  const { token, baseId } = config(baseIdOverride, tokenOverride);
   const response = await fetch(
     `${AIRTABLE_API}/${baseId}/${tableId}/${recordId}?returnFieldsByFieldId=true`,
     {
@@ -96,11 +99,12 @@ export async function createRecord(
   tableId: string,
   fields: Record<string, unknown>,
   baseId?: string,
+  token?: string,
 ): Promise<AirtableRecord> {
   const response = await airtableFetch(tableId, {
     method: "POST",
     body: JSON.stringify({ records: [{ fields }], typecast: false, returnFieldsByFieldId: true }),
-  }, 0, baseId);
+  }, 0, baseId, token);
   const data = (await response.json()) as { records: AirtableRecord[] };
   return data.records[0];
 }
@@ -110,11 +114,12 @@ export async function updateRecord(
   recordId: string,
   fields: Record<string, unknown>,
   baseId?: string,
+  token?: string,
 ): Promise<AirtableRecord> {
   const response = await airtableFetch(`${tableId}/${recordId}`, {
     method: "PATCH",
     body: JSON.stringify({ fields, typecast: false, returnFieldsByFieldId: true }),
-  }, 0, baseId);
+  }, 0, baseId, token);
   return (await response.json()) as AirtableRecord;
 }
 
