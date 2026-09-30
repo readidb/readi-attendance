@@ -56,9 +56,9 @@ function mapReservation(
 ): VisitorReservation {
   const fields = record.fields;
   const linkedHost = Array.isArray(fields[VISITOR_FIELDS.reservations.host])
-    ? (fields[VISITOR_FIELDS.reservations.host] as Array<{ id?: string }>)[0]
+    ? (fields[VISITOR_FIELDS.reservations.host] as Array<string | { id?: string }>)[0]
     : undefined;
-  const hostRecordId = linkedHost?.id || "";
+  const hostRecordId = typeof linkedHost === "string" ? linkedHost : linkedHost?.id || "";
   const host = hostsById.get(hostRecordId);
   const { date, time } = dateTimeParts(fields[VISITOR_FIELDS.reservations.visitAt]);
   return {
