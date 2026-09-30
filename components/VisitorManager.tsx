@@ -320,8 +320,7 @@ export default function VisitorManager({
 
       {!loading && view === "overview" && (
         <div className="visitor-overview">
-          <section className="visitor-section" aria-labelledby="visitor-calendar-title">
-            <div className="visitor-section-heading"><h3 id="visitor-calendar-title">달력</h3><span>예약이 있는 날짜를 선택하세요.</span></div>
+          <section className="visitor-section" aria-label="방문 예약 달력">
             <div className="calendar-heading">
               <button type="button" aria-label="이전 달" onClick={() => setMonth((value) => moveMonth(value, -1))}>‹</button>
               <strong>{monthTitle(month)}</strong>

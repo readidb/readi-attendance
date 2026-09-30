@@ -11,7 +11,7 @@ import VisitorManager from "@/components/VisitorManager";
 import type { DashboardData } from "@/lib/types";
 
 type Tab = "home" | "flexible" | "overtime" | "leave" | "visitors" | "history";
-const tabs: Array<[Tab, string]> = [["home", "내 근태"], ["flexible", "유연근무"], ["overtime", "잔업신청"], ["leave", "연차신청"], ["visitors", "방문예약"], ["history", "신청내역"]];
+const tabs: Array<[Tab, string]> = [["home", "홈"], ["flexible", "유연근무"], ["overtime", "잔업신청"], ["leave", "연차신청"], ["visitors", "방문예약"], ["history", "신청내역"]];
 
 export default function AttendanceApp({
   initialData,
