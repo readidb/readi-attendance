@@ -21,7 +21,7 @@ export default function HomeSummary({ data, onNavigate }: Props) {
       )}
       <section className="weekly-summary" aria-label="이번 주 근무현황">
         <p className="summary-eyebrow">이번 주 근무현황</p>
-        <h2 className="summary-greeting">{employee.department} {employee.name} {employee.position} 님, 안녕하세요.</h2>
+        <h2 className="summary-greeting">{employee.department} {employee.name} {employee.position}님, 안녕하세요.</h2>
         <div className="summary-grid">
           <article className="metric-card">
             <span>금주 잔업</span>

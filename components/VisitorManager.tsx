@@ -160,25 +160,29 @@ function HostPicker({
   );
 }
 
-function ReservationCard({ item, onOpen }: { item: VisitorReservation; onOpen: () => void }) {
+function ReservationCard({ item, hosts, onOpen }: { item: VisitorReservation; hosts: VisitorHost[]; onOpen: () => void }) {
+  const hostNames = item.hostRecordIds.map((id, index) => {
+    const host = hosts.find((candidate) => candidate.recordId === id);
+    return host ? [host.department, host.name].filter(Boolean).join(" ") : item.hostNames[index];
+  }).filter(Boolean).join(", ") || item.hostNames.join(", ") || "미지정";
   return (
     <button className={`visitor-list-item${item.cancelled ? " cancelled" : ""}`} type="button" onClick={onOpen}>
       <span className="visitor-list-time">방문일시 · {item.visitDate} {item.visitTime}</span>
       <span className="visitor-card-group">
         <span className="visitor-card-heading">방문자</span>
-        <span className="visitor-card-row"><span className="visitor-card-label">방문업체</span><strong className="visitor-card-value">{item.company || "-"}</strong></span>
-        <span className="visitor-card-row"><span className="visitor-card-label">방문목적</span><span className="visitor-card-value">{item.purpose || "-"}</span></span>
-        <span className="visitor-card-row"><span className="visitor-card-label">방문인원</span><span className="visitor-card-value">{item.headcount || 1}명</span></span>
+        <span className="visitor-card-row"><span className="visitor-card-label">소속</span><strong className="visitor-card-value">{item.company || "-"}</strong></span>
+        <span className="visitor-card-row"><span className="visitor-card-label">목적</span><span className="visitor-card-value">{item.purpose || "-"}</span></span>
+        <span className="visitor-card-row"><span className="visitor-card-label">인원</span><span className="visitor-card-value">{item.headcount || 1}명</span></span>
         {item.vehicleNo && <span className="visitor-card-row"><span className="visitor-card-label">차량번호</span><span className="visitor-card-value">{item.vehicleNo}</span></span>}
         {item.note && <span className="visitor-card-row"><span className="visitor-card-label">비고</span><span className="visitor-card-value">{item.note}</span></span>}
       </span>
       <span className="visitor-card-group">
         <span className="visitor-card-heading">방문장소</span>
-        <span className="visitor-card-row"><span className="visitor-card-label">장소</span><span className="visitor-card-value">{item.location || "-"}</span></span>
+        <span className="visitor-card-value">{item.location || "-"}</span>
       </span>
       <span className="visitor-card-group">
         <span className="visitor-card-heading">담당자</span>
-        <span className="visitor-card-row"><span className="visitor-card-label">담당자</span><span className="visitor-card-value">{item.hostNames.join(", ") || "미지정"}</span></span>
+        <span className="visitor-card-value">{hostNames}</span>
       </span>
       {item.cancelled && <em className="visitor-cancel-badge">예약취소</em>}
     </button>
@@ -337,7 +341,7 @@ export default function VisitorManager({
             </div>
             <div className="selected-date-heading"><strong>{selectedDate}</strong></div>
             <div className="visitor-list compact">
-              {(byDate.get(selectedDate) || []).map((item) => <ReservationCard key={item.id} item={item} onOpen={() => setSelected(item)} />)}
+              {(byDate.get(selectedDate) || []).map((item) => <ReservationCard key={item.id} item={item} hosts={data?.hosts || []} onOpen={() => setSelected(item)} />)}
               {(byDate.get(selectedDate) || []).length === 0 && <p className="empty-text">이 날짜의 예약이 없습니다.</p>}
             </div>
           </section>
@@ -352,7 +356,7 @@ export default function VisitorManager({
               ))}
             </div>
             <div className="visitor-list">
-              {listItems.map((item) => <ReservationCard key={item.id} item={item} onOpen={() => setSelected(item)} />)}
+              {listItems.map((item) => <ReservationCard key={item.id} item={item} hosts={data?.hosts || []} onOpen={() => setSelected(item)} />)}
               {listItems.length === 0 && <p className="empty-text">조건에 맞는 예약이 없습니다.</p>}
             </div>
           </section>
