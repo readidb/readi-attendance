@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import LoadingButton from "@/components/LoadingButton";
-import { STANDARD_SCHEDULE } from "@/lib/constants";
+import { useSubmission } from "@/components/useSubmission";
+import { requestJson } from "@/lib/http";
+import { FLEXIBLE_SCHEDULES, STANDARD_SCHEDULE } from "@/lib/constants";
 import { calculateOvertimeHours } from "@/lib/dates";
 
 type Props = {
@@ -13,7 +15,7 @@ type Props = {
 };
 
 export default function OvertimeForm({ today, weeklyOvertime, onSuccess, onError }: Props) {
-  const [loading, setLoading] = useState(false);
+  const { loading, run } = useSubmission(onError);
   const [contextLoading, setContextLoading] = useState(true);
   const [date, setDate] = useState(today);
   const [schedule, setSchedule] = useState(STANDARD_SCHEDULE);
@@ -27,15 +29,15 @@ export default function OvertimeForm({ today, weeklyOvertime, onSuccess, onError
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`/api/overtime?date=${encodeURIComponent(date)}`, { cache: "no-store", signal: controller.signal })
-      .then(async (response) => {
-        const result = await response.json() as { schedule?: string; weeklyOvertime?: number; message?: string };
-        if (!response.ok || !result.schedule) throw new Error(result.message || "근무시간을 불러오지 못했습니다.");
+    requestJson<{ schedule?: string; weeklyOvertime?: number; message?: string }>(`/api/overtime?date=${encodeURIComponent(date)}`, { signal: controller.signal }, "근무시간을 불러오지 못했습니다.")
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        if (!result.schedule || !FLEXIBLE_SCHEDULES.some((item) => item === result.schedule)) throw new Error("근무시간을 불러오지 못했습니다.");
         setSchedule(result.schedule);
         setDateWeeklyOvertime(Number(result.weeklyOvertime ?? 0));
       })
       .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (controller.signal.aborted) return;
         onError(error instanceof Error ? error.message : "근무시간을 불러오지 못했습니다.");
       })
       .finally(() => {
@@ -46,23 +48,15 @@ export default function OvertimeForm({ today, weeklyOvertime, onSuccess, onError
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (loading) return;
-    setLoading(true);
-    try {
-      const response = await fetch("/api/overtime", {
+    if (contextLoading) return;
+    await run(async () => {
+      const result = await requestJson<{ message?: string }>("/api/overtime", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, endTime, internalMeal, externalMeal, reason }),
-      });
-      const result = await response.json() as { message?: string };
-      if (!response.ok) throw new Error(result.message || "신청을 등록하지 못했습니다.");
+        body: JSON.stringify({ date, schedule, endTime, internalMeal, externalMeal, reason }),
+      }, "신청을 등록하지 못했습니다.");
       setReason("");
       await onSuccess(result.message || "잔업 신청이 등록되었습니다.");
-    } catch (error) {
-      onError(error instanceof Error ? error.message : "신청을 등록하지 못했습니다.");
-    } finally {
-      setLoading(false);
-    }
+    });
   }
 
   return (
@@ -70,8 +64,13 @@ export default function OvertimeForm({ today, weeklyOvertime, onSuccess, onError
       <h2>잔업 신청</h2>
       <p className="helper">잔업을 1시간 단위로 내림한 뒤 사내식사는 0.5시간, 외부식사는 1시간을 차감합니다.</p>
       <form onSubmit={submit}>
-        <label>날짜<input type="date" value={date} onChange={(event) => { setContextLoading(true); setDate(event.target.value); }} required /></label>
-        <label>적용 근무시간<input value={contextLoading ? "불러오는 중" : schedule} readOnly aria-busy={contextLoading} /></label>
+        <label>날짜<input type="date" value={date} onChange={(event) => { setContextLoading(true); setSchedule(STANDARD_SCHEDULE); setDate(event.target.value); }} required /></label>
+        <label>출근시간
+          <select value={schedule} onChange={(event) => setSchedule(event.target.value)} disabled={contextLoading} aria-busy={contextLoading} required>
+            {FLEXIBLE_SCHEDULES.map((item) => <option key={item} value={item}>{item.slice(0, 5)}</option>)}
+          </select>
+        </label>
+        <p className="helper">{contextLoading ? "해당 날짜의 유연근무 시간을 확인하고 있습니다." : "해당 날짜의 유연근무 출근시간이 기본값입니다. 신청이 없으면 08:00이며 직접 변경할 수 있습니다."}</p>
         <label>퇴근시간<input type="time" step="1800" value={endTime} onChange={(event) => setEndTime(event.target.value)} required /></label>
         <fieldset className="meal-options">
           <legend>식사 종류</legend>

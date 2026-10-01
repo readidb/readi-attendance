@@ -1,6 +1,6 @@
 import "server-only";
 
-import { listRecords, selectName } from "@/lib/airtable";
+import { formulaString, listRecords, selectName } from "@/lib/airtable";
 import {
   VISITOR_BASE_ID,
   VISITOR_FIELDS,
@@ -104,10 +104,11 @@ export async function getVisitorHosts(): Promise<VisitorHost[]> {
   return records.map(mapHost).filter((host) => host.employeeNo && host.name);
 }
 
-export async function getVisitorReservations(hosts?: VisitorHost[]): Promise<VisitorReservation[]> {
+export async function getVisitorReservations(hosts?: VisitorHost[], filterByFormula?: string): Promise<VisitorReservation[]> {
   const resolvedHosts = hosts || await getVisitorHosts();
   const hostsById = new Map(resolvedHosts.map((host) => [host.recordId, host]));
   const records = await listRecords(VISITOR_TABLES.reservations, {
+    filterByFormula,
     baseId: VISITOR_BASE_ID,
     token: visitorAirtableToken(),
     sortField: VISITOR_FIELDS.reservations.visitAt,
@@ -120,7 +121,7 @@ export async function getTodayVisitorCount(employeeNo: number, today: string): P
   const hosts = await getVisitorHosts();
   const currentHost = hosts.find((host) => host.employeeNo === employeeNo);
   if (!currentHost) return 0;
-  const reservations = await getVisitorReservations(hosts);
+  const reservations = await getVisitorReservations(hosts, `AND({${VISITOR_FIELDS.reservations.cancelled}}!=1,DATETIME_FORMAT(SET_TIMEZONE({${VISITOR_FIELDS.reservations.visitAt}},'Asia/Seoul'),'YYYY-MM-DD')=${formulaString(today)})`);
   return reservations.filter((item) => !item.cancelled && item.hostRecordIds.includes(currentHost.recordId) && item.visitDate === today).length;
 }
 

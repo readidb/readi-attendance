@@ -2,36 +2,29 @@
 
 import { useState } from "react";
 import LoadingButton from "@/components/LoadingButton";
+import { useSubmission } from "@/components/useSubmission";
+import { requestJson } from "@/lib/http";
 import { FLEXIBLE_SCHEDULES } from "@/lib/constants";
 import { nearestFlexibleSchedule } from "@/lib/dates";
 
 type Props = { today: string; onSuccess: (message: string) => Promise<void>; onError: (message: string) => void };
 
 export default function FlexibleForm({ today, onSuccess, onError }: Props) {
-  const [loading, setLoading] = useState(false);
+  const { loading, run } = useSubmission(onError);
   const [date, setDate] = useState(today);
   const [schedule, setSchedule] = useState(() => nearestFlexibleSchedule());
   const [note, setNote] = useState("");
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (loading) return;
-    setLoading(true);
-    try {
-      const response = await fetch("/api/flexible", {
+    await run(async () => {
+      const result = await requestJson<{ message?: string }>("/api/flexible", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date, schedule, note }),
-      });
-      const result = await response.json() as { message?: string };
-      if (!response.ok) throw new Error(result.message || "신청을 등록하지 못했습니다.");
+      }, "신청을 등록하지 못했습니다.");
       setNote("");
       await onSuccess(result.message || "유연근무 신청이 등록되었습니다.");
-    } catch (error) {
-      onError(error instanceof Error ? error.message : "신청을 등록하지 못했습니다.");
-    } finally {
-      setLoading(false);
-    }
+    });
   }
 
   return (

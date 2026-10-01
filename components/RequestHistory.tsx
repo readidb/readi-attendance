@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { requestJson } from "@/lib/http";
 import type { RequestItem } from "@/lib/types";
 
 type Filter = "all" | RequestItem["category"];
@@ -13,10 +14,10 @@ export default function RequestHistory({ requests }: { requests: RequestItem[] }
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/history?category=visitors", { cache: "no-store", signal: controller.signal })
-      .then(async (response) => {
-        const result = await response.json() as { data?: RequestItem[]; message?: string };
-        if (!response.ok || !result.data) throw new Error(result.message || "방문예약 내역을 불러오지 못했습니다.");
+    requestJson<{ data?: RequestItem[] }>("/api/history?category=visitors", { signal: controller.signal }, "방문예약 내역을 불러오지 못했습니다.")
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        if (!result.data) throw new Error("방문예약 내역을 불러오지 못했습니다.");
         setVisitors(result.data);
       })
       .catch((error: unknown) => {

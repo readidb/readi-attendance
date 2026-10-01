@@ -1,14 +1,21 @@
 "use client";
 
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
-import FlexibleForm from "@/components/FlexibleForm";
 import HomeSummary from "@/components/HomeSummary";
-import LeaveForm from "@/components/LeaveForm";
-import OvertimeForm from "@/components/OvertimeForm";
-import RequestHistory from "@/components/RequestHistory";
-import VisitorManager from "@/components/VisitorManager";
+import { requestJson } from "@/lib/http";
 import type { DashboardData } from "@/lib/types";
+
+function TabLoading() {
+  return <p className="empty-text" role="status">불러오는 중…</p>;
+}
+
+const FlexibleForm = dynamic(() => import("@/components/FlexibleForm"), { loading: TabLoading });
+const LeaveForm = dynamic(() => import("@/components/LeaveForm"), { loading: TabLoading });
+const OvertimeForm = dynamic(() => import("@/components/OvertimeForm"), { loading: TabLoading });
+const RequestHistory = dynamic(() => import("@/components/RequestHistory"), { loading: TabLoading });
+const VisitorManager = dynamic(() => import("@/components/VisitorManager"), { loading: TabLoading });
 
 type Tab = "home" | "flexible" | "overtime" | "leave" | "visitors" | "history";
 const tabs: Array<[Tab, string]> = [["home", "홈"], ["flexible", "유연근무"], ["overtime", "잔업신청"], ["leave", "연차신청"], ["visitors", "방문예약"], ["history", "신청내역"]];
@@ -54,9 +61,8 @@ export default function AttendanceApp({
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/dashboard", { cache: "no-store" });
-      const result = await response.json() as { data?: DashboardData; message?: string };
-      if (!response.ok || !result.data) throw new Error(result.message || "근태 정보를 불러오지 못했습니다.");
+      const result = await requestJson<{ data?: DashboardData }>("/api/dashboard", {}, "근태 정보를 불러오지 못했습니다.");
+      if (!result.data) throw new Error("근태 정보를 불러오지 못했습니다.");
       setData(result.data);
     } catch (caught) {
       setData(null);

@@ -10,8 +10,8 @@ async function getOvertimeContext(employeeNo: number, date: string) {
   const flexibleFormula = `AND(ARRAYJOIN({${FIELDS.flexible.employee}})=${employeeFilter},{${FIELDS.flexible.date}}=${formulaString(date)})`;
   const overtimeFormula = `ARRAYJOIN({${FIELDS.overtime.employee}})=${employeeFilter}`;
   const [flexibleRecords, overtimeRecords] = await Promise.all([
-    listRecords(TABLES.flexible, { filterByFormula: flexibleFormula }),
-    listRecords(TABLES.overtime, { filterByFormula: overtimeFormula }),
+    listRecords(TABLES.flexible, { filterByFormula: flexibleFormula, fields: [FIELDS.flexible.schedule] }),
+    listRecords(TABLES.overtime, { filterByFormula: overtimeFormula, fields: [FIELDS.overtime.date, FIELDS.overtime.hours] }),
   ]);
   const latestFlexible = flexibleRecords.toSorted((a, b) => b.createdTime.localeCompare(a.createdTime))[0];
   const selectedSchedule = selectName(latestFlexible?.fields[FIELDS.flexible.schedule]);
@@ -60,13 +60,18 @@ export async function POST(request: NextRequest) {
     const reason = typeof body.reason === "string" ? body.reason.trim() : "";
 
     if (!isIsoDate(date)) throw new ApiError("잔업 날짜를 확인해 주세요.");
+    if (body.schedule !== undefined && (typeof body.schedule !== "string" || !FLEXIBLE_SCHEDULES.some((item) => item === body.schedule))) {
+      throw new ApiError("출근시간을 선택해 주세요.");
+    }
     if (!isTime(endTime) || !/:(?:00|30)$/.test(endTime)) {
       throw new ApiError("퇴근시간은 30분 단위로 선택해 주세요.");
     }
     if (!reason) throw new ApiError("장소/사유를 입력해 주세요.");
     if (reason.length > 300) throw new ApiError("장소/사유는 300자 이내로 입력해 주세요.");
 
-    const { schedule, weeklyOvertime } = await getOvertimeContext(employee.employeeNo, date);
+    const context = await getOvertimeContext(employee.employeeNo, date);
+    const schedule = typeof body.schedule === "string" ? body.schedule : context.schedule;
+    const weeklyOvertime = context.weeklyOvertime;
     const requestedHours = calculateOvertimeHours(schedule, endTime, externalMeal, internalMeal);
     if (requestedHours <= 0) throw new ApiError("계산되는 잔업시간이 있어야 합니다.");
     if (weeklyOvertime + requestedHours > 12) {

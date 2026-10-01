@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
 import AttendanceApp from "@/components/AttendanceApp";
 import { findActiveEmployeeByKey, requireActiveEmployee } from "@/lib/auth";
-import { getEmployeeRequests, getPublishedNotices, publicEmployee } from "@/lib/data";
+import { getDashboardData } from "@/lib/data";
 import { todayInSeoul } from "@/lib/dates";
-import { getTodayVisitorCount } from "@/lib/visitors";
 import type { DashboardData } from "@/lib/types";
 
 type Props = {
@@ -40,16 +39,7 @@ export default async function Page({ searchParams }: Props) {
     try {
       employee = employee || await requireActiveEmployee();
       if (employee) {
-        const today = todayInSeoul();
-        const [requests, notices, todayVisitorCount] = await Promise.all([
-          getEmployeeRequests(employee.employeeNo),
-          getPublishedNotices(),
-          getTodayVisitorCount(employee.employeeNo, today).catch((error) => {
-            console.error("Visitor notification load failed", error);
-            return 0;
-          }),
-        ]);
-        initialData = { employee: publicEmployee(employee), requests, notices, todayVisitorCount };
+        initialData = await getDashboardData(employee);
       }
     } catch (caught) {
       console.error(caught);

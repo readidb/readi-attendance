@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import LoadingButton from "@/components/LoadingButton";
+import { useSubmission } from "@/components/useSubmission";
+import { requestJson } from "@/lib/http";
 import { LEAVE_TYPES } from "@/lib/constants";
 import { countWeekdays } from "@/lib/dates";
 
@@ -13,7 +15,7 @@ type Props = {
 };
 
 export default function LeaveForm({ today, remainingLeave, onSuccess, onError }: Props) {
-  const [loading, setLoading] = useState(false);
+  const { loading, run } = useSubmission(onError);
   const [type, setType] = useState("연차");
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
@@ -25,23 +27,14 @@ export default function LeaveForm({ today, remainingLeave, onSuccess, onError }:
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (loading) return;
-    setLoading(true);
-    try {
-      const response = await fetch("/api/leave", {
+    await run(async () => {
+      const result = await requestJson<{ message?: string }>("/api/leave", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type, startDate, endDate: isRangeType ? endDate : startDate, reason }),
-      });
-      const result = await response.json() as { message?: string };
-      if (!response.ok) throw new Error(result.message || "신청을 등록하지 못했습니다.");
+      }, "신청을 등록하지 못했습니다.");
       setReason("");
       await onSuccess(result.message || "연차 신청이 등록되었습니다.");
-    } catch (error) {
-      onError(error instanceof Error ? error.message : "신청을 등록하지 못했습니다.");
-    } finally {
-      setLoading(false);
-    }
+    });
   }
 
   return (

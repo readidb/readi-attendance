@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import LoadingButton from "@/components/LoadingButton";
+import { useSubmission } from "@/components/useSubmission";
+import { requestJson } from "@/lib/http";
 import type { VisitorData, VisitorHost, VisitorReservation } from "@/lib/types";
 
 type View = "overview" | "form";
@@ -19,7 +21,8 @@ type Draft = {
   note: string;
 };
 
-const LOCATIONS = ["1공장", "2공장", "연구소"];
+const EMPTY_RESERVATIONS: VisitorReservation[] = [];
+const EMPTY_HOSTS: VisitorHost[] = [];
 
 function blankDraft(today: string, hostRecordId = ""): Draft {
   return {
@@ -73,10 +76,9 @@ function calendarDays(month: string): Array<string | null> {
   return days;
 }
 
-async function fetchVisitorData(): Promise<VisitorData> {
-  const response = await fetch("/api/visitors", { cache: "no-store" });
-  const result = await response.json() as { data?: VisitorData; message?: string };
-  if (!response.ok || !result.data) throw new Error(result.message || "방문 예약을 불러오지 못했습니다.");
+async function fetchVisitorData(signal?: AbortSignal): Promise<VisitorData> {
+  const result = await requestJson<{ data?: VisitorData }>("/api/visitors", { signal }, "방문 예약을 불러오지 못했습니다.");
+  if (!result.data) throw new Error("방문 예약을 불러오지 못했습니다.");
   return result.data;
 }
 
@@ -160,9 +162,9 @@ function HostPicker({
   );
 }
 
-function ReservationCard({ item, hosts, onOpen }: { item: VisitorReservation; hosts: VisitorHost[]; onOpen: () => void }) {
+function ReservationCard({ item, hostsById, onOpen }: { item: VisitorReservation; hostsById: Map<string, VisitorHost>; onOpen: () => void }) {
   const hostNames = item.hostRecordIds.map((id, index) => {
-    const host = hosts.find((candidate) => candidate.recordId === id);
+    const host = hostsById.get(id);
     return host ? [host.department, host.name].filter(Boolean).join(" ") : item.hostNames[index];
   }).filter(Boolean).join(", ") || item.hostNames.join(", ") || "미지정";
   return (
@@ -199,8 +201,8 @@ export default function VisitorManager({
   const [data, setData] = useState<VisitorData | null>(null);
   const [view, setView] = useState<View>("overview");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
+  const { loading: saving, run: saveRequest } = useSubmission(onNotify, "방문 예약을 저장하지 못했습니다.");
+  const { loading: cancelling, run: cancelRequest } = useSubmission(onNotify, "예약을 취소하지 못했습니다.");
   const [selected, setSelected] = useState<VisitorReservation | null>(null);
   const [editingId, setEditingId] = useState("");
   const [draft, setDraft] = useState<Draft>(() => blankDraft(today));
@@ -208,45 +210,32 @@ export default function VisitorManager({
   const [selectedDate, setSelectedDate] = useState(today);
   const [dateFilter, setDateFilter] = useState<DateFilter>("upcoming");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await fetchVisitorData();
-      setData(result);
-      setDraft((current) => current.hostRecordIds.length
-        ? current
-        : { ...current, hostRecordIds: result.currentHostRecordId ? [result.currentHostRecordId] : [] });
-    } catch (error) {
-      onNotify(error instanceof Error ? error.message : "방문 예약을 불러오지 못했습니다.");
-    } finally {
-      setLoading(false);
-    }
-  }, [onNotify]);
+  const load = useCallback((signal?: AbortSignal) => fetchVisitorData(signal)
+    .then((result) => { if (!signal?.aborted) setData(result); })
+    .catch((error: unknown) => {
+      if (!signal?.aborted) onNotify(error instanceof Error ? error.message : "방문 예약을 불러오지 못했습니다.");
+    })
+    .finally(() => { if (!signal?.aborted) setLoading(false); }), [onNotify]);
 
   useEffect(() => {
-    let active = true;
-    void fetchVisitorData()
-      .then((result) => {
-        if (!active) return;
-        setData(result);
-        setDraft((current) => current.hostRecordIds.length
-          ? current
-          : { ...current, hostRecordIds: result.currentHostRecordId ? [result.currentHostRecordId] : [] });
-      })
-      .catch((error: unknown) => {
-        if (active) onNotify(error instanceof Error ? error.message : "방문 예약을 불러오지 못했습니다.");
-      })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [onNotify]);
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
+  }, [load]);
 
-  const reservations = useMemo(() => data?.reservations || [], [data]);
-  const activeReservations = useMemo(() => reservations.filter((item) => !item.cancelled), [reservations]);
+  const reservations = data?.reservations || EMPTY_RESERVATIONS;
+  const hosts = data?.hosts || EMPTY_HOSTS;
+  const hostsById = useMemo(() => new Map(hosts.map((host) => [host.recordId, host])), [hosts]);
   const byDate = useMemo(() => {
     const map = new Map<string, VisitorReservation[]>();
-    activeReservations.forEach((item) => map.set(item.visitDate, [...(map.get(item.visitDate) || []), item]));
+    for (const item of reservations) {
+      if (item.cancelled) continue;
+      const items = map.get(item.visitDate);
+      if (items) items.push(item);
+      else map.set(item.visitDate, [item]);
+    }
     return map;
-  }, [activeReservations]);
+  }, [reservations]);
   const listItems = useMemo(() => reservations.filter((item) => {
     if (dateFilter === "today") return item.visitDate === today;
     if (dateFilter === "upcoming") return item.visitDate >= today;
@@ -269,49 +258,33 @@ export default function VisitorManager({
 
   async function save(event: React.FormEvent) {
     event.preventDefault();
-    if (saving || draft.hostRecordIds.length === 0) return;
-    setSaving(true);
-    try {
-      const response = await fetch("/api/visitors", {
+    if (draft.hostRecordIds.length === 0) return;
+    await saveRequest(async () => {
+      const result = await requestJson<{ message?: string }>("/api/visitors", {
         method: editingId ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...draft, id: editingId || undefined }),
-      });
-      const result = await response.json() as { message?: string };
-      if (!response.ok) throw new Error(result.message || "방문 예약을 저장하지 못했습니다.");
+      }, "방문 예약을 저장하지 못했습니다.");
       onNotify(result.message || "방문 예약이 저장되었습니다.");
       await load();
       setView("overview");
       setEditingId("");
-    } catch (error) {
-      onNotify(error instanceof Error ? error.message : "방문 예약을 저장하지 못했습니다.");
-    } finally {
-      setSaving(false);
-    }
+    });
   }
 
   async function cancelReservation(item: VisitorReservation) {
     if (cancelling || !window.confirm("예약을 취소하시겠습니까? 취소된 예약은 목록에서 계속 확인할 수 있습니다.")) return;
-    setCancelling(true);
-    try {
-      const response = await fetch("/api/visitors", {
+    await cancelRequest(async () => {
+      const result = await requestJson<{ message?: string }>("/api/visitors", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: item.id, action: "cancel" }),
-      });
-      const result = await response.json() as { message?: string };
-      if (!response.ok) throw new Error(result.message || "예약을 취소하지 못했습니다.");
+      }, "예약을 취소하지 못했습니다.");
       onNotify(result.message || "방문 예약이 취소되었습니다.");
       setSelected(null);
       await load();
-    } catch (error) {
-      onNotify(error instanceof Error ? error.message : "예약을 취소하지 못했습니다.");
-    } finally {
-      setCancelling(false);
-    }
+    });
   }
 
-  const selectedHosts = (data?.hosts || []).filter((host) => draft.hostRecordIds.includes(host.recordId));
+  const selectedHosts = hosts.filter((host) => draft.hostRecordIds.includes(host.recordId));
 
   return (
     <section className="panel visitor-panel">
@@ -341,7 +314,7 @@ export default function VisitorManager({
             </div>
             <div className="selected-date-heading"><strong>{selectedDate}</strong></div>
             <div className="visitor-list compact">
-              {(byDate.get(selectedDate) || []).map((item) => <ReservationCard key={item.id} item={item} hosts={data?.hosts || []} onOpen={() => setSelected(item)} />)}
+              {(byDate.get(selectedDate) || []).map((item) => <ReservationCard key={item.id} item={item} hostsById={hostsById} onOpen={() => setSelected(item)} />)}
               {(byDate.get(selectedDate) || []).length === 0 && <p className="empty-text">이 날짜의 예약이 없습니다.</p>}
             </div>
           </section>
@@ -356,7 +329,7 @@ export default function VisitorManager({
               ))}
             </div>
             <div className="visitor-list">
-              {listItems.map((item) => <ReservationCard key={item.id} item={item} hosts={data?.hosts || []} onOpen={() => setSelected(item)} />)}
+              {listItems.map((item) => <ReservationCard key={item.id} item={item} hostsById={hostsById} onOpen={() => setSelected(item)} />)}
               {listItems.length === 0 && <p className="empty-text">조건에 맞는 예약이 없습니다.</p>}
             </div>
           </section>
@@ -377,8 +350,7 @@ export default function VisitorManager({
               <label>방문시간<input type="time" value={draft.visitTime} onChange={(event) => setDraft({ ...draft, visitTime: event.target.value })} required /></label>
             </div>
             <label>방문장소
-              <input list="visitor-location-options" value={draft.location} onChange={(event) => setDraft({ ...draft, location: event.target.value })} placeholder="선택하거나 직접 입력" required />
-              <datalist id="visitor-location-options">{LOCATIONS.map((location) => <option key={location} value={location} />)}</datalist>
+              <input type="text" value={draft.location} onChange={(event) => setDraft({ ...draft, location: event.target.value })} maxLength={100} placeholder="방문장소를 입력해 주세요" required />
             </label>
             <label>방문업체<input value={draft.company} onChange={(event) => setDraft({ ...draft, company: event.target.value })} maxLength={150} required /></label>
             <label>방문인원<input type="number" min="1" max="100" value={draft.headcount} onChange={(event) => setDraft({ ...draft, headcount: Number(event.target.value) })} required /></label>
@@ -390,7 +362,7 @@ export default function VisitorManager({
           <fieldset className="visitor-form-group">
             <legend>담당자 정보</legend>
             <label>담당자
-              <HostPicker hosts={data?.hosts || []} selectedIds={draft.hostRecordIds} onChange={(hostRecordIds) => setDraft({ ...draft, hostRecordIds })} />
+              <HostPicker hosts={hosts} selectedIds={draft.hostRecordIds} onChange={(hostRecordIds) => setDraft({ ...draft, hostRecordIds })} />
             </label>
             <div className="selected-host-contacts">
               {selectedHosts.map((host) => (
@@ -409,8 +381,8 @@ export default function VisitorManager({
             <div className="visitor-form-title"><h3>예약 상세</h3><button type="button" onClick={() => setSelected(null)}>닫기</button></div>
             {selected.cancelled && <p className="visitor-cancel-notice">취소된 예약입니다.</p>}
             <dl>
+              <div className="visitor-detail-time"><dt>방문일시</dt><dd>{selected.visitDate} {selected.visitTime}</dd></div>
               <div><dt>예약번호</dt><dd>{selected.reservationNo || "-"}</dd></div>
-              <div><dt>방문일시</dt><dd>{selected.visitDate} {selected.visitTime}</dd></div>
               <div><dt>업체</dt><dd>{selected.company}</dd></div>
               <div><dt>방문인원</dt><dd>{selected.headcount || 1}명</dd></div>
               <div><dt>방문목적</dt><dd>{selected.purpose}</dd></div>

@@ -2,7 +2,9 @@ import "server-only";
 
 import { FIELDS, TABLES } from "@/lib/constants";
 import { formulaString, listRecords, selectName } from "@/lib/airtable";
-import type { Employee, Notice, RequestItem } from "@/lib/types";
+import { todayInSeoul } from "@/lib/dates";
+import { getTodayVisitorCount } from "@/lib/visitors";
+import type { DashboardData, Employee, Notice, RequestItem } from "@/lib/types";
 
 function employeeFormula(employeeNo: number, fieldId: string): string {
   return `ARRAYJOIN({${fieldId}})=${formulaString(String(employeeNo))}`;
@@ -16,12 +18,15 @@ export async function getEmployeeRequests(employeeNo: number): Promise<RequestIt
   const [flexible, overtime, leave] = await Promise.all([
     listRecords(TABLES.flexible, {
       filterByFormula: employeeFormula(employeeNo, FIELDS.flexible.employee),
+      fields: [FIELDS.flexible.requestNo, FIELDS.flexible.date, FIELDS.flexible.schedule, FIELDS.flexible.note],
     }),
     listRecords(TABLES.overtime, {
       filterByFormula: employeeFormula(employeeNo, FIELDS.overtime.employee),
+      fields: [FIELDS.overtime.requestNo, FIELDS.overtime.date, FIELDS.overtime.hours, FIELDS.overtime.reason, FIELDS.overtime.validationStatus],
     }),
     listRecords(TABLES.leave, {
       filterByFormula: employeeFormula(employeeNo, FIELDS.leave.employee),
+      fields: [FIELDS.leave.requestNo, FIELDS.leave.type, FIELDS.leave.startDate, FIELDS.leave.endDate, FIELDS.leave.days, FIELDS.leave.reason],
     }),
   ]);
 
@@ -53,7 +58,7 @@ export async function getEmployeeRequests(employeeNo: number): Promise<RequestIt
       const days = Number(record.fields[FIELDS.leave.days] ?? 0);
       return {
         id: record.id,
-      createdAt: record.createdTime,
+        createdAt: record.createdTime,
         requestNo: text(record.fields[FIELDS.leave.requestNo]),
         category: "leave" as const,
         typeLabel: selectName(record.fields[FIELDS.leave.type]) || "연차",
@@ -93,5 +98,17 @@ export function publicEmployee(employee: Employee): Omit<Employee, "recordId"> {
   const { recordId: _recordId, ...safeEmployee } = employee;
   void _recordId;
   return safeEmployee;
+}
+
+export async function getDashboardData(employee: Employee, today = todayInSeoul()): Promise<DashboardData> {
+  const [requests, notices, todayVisitorCount] = await Promise.all([
+    getEmployeeRequests(employee.employeeNo),
+    getPublishedNotices(),
+    getTodayVisitorCount(employee.employeeNo, today).catch((error) => {
+      console.error("Visitor notification load failed", error);
+      return 0;
+    }),
+  ]);
+  return { employee: publicEmployee(employee), requests, notices, todayVisitorCount };
 }
 
