@@ -68,7 +68,7 @@ export default function OvertimeForm({ today, weeklyOvertime, onSuccess, onError
   return (
     <section className="panel form-panel">
       <h2>잔업 신청</h2>
-      <p className="helper">잔업을 1시간 단위로 내림한 뒤 사내식사은 0.5시간, 외부식사는 1시간을 차감합니다.</p>
+      <p className="helper">잔업을 1시간 단위로 내림한 뒤 사내식사는 0.5시간, 외부식사는 1시간을 차감합니다.</p>
       <form onSubmit={submit}>
         <label>날짜<input type="date" value={date} onChange={(event) => { setContextLoading(true); setDate(event.target.value); }} required /></label>
         <label>적용 근무시간<input value={contextLoading ? "불러오는 중" : schedule} readOnly aria-busy={contextLoading} /></label>
