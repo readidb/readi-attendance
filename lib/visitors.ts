@@ -6,7 +6,7 @@ import {
   VISITOR_FIELDS,
   VISITOR_TABLES,
 } from "@/lib/constants";
-import type { AirtableRecord, VisitorHost, VisitorReservation } from "@/lib/types";
+import type { AirtableRecord, RequestItem, VisitorHost, VisitorReservation } from "@/lib/types";
 
 export function visitorAirtableToken(): string {
   const token = process.env.VISITOR_AIRTABLE_TOKEN || process.env.AIRTABLE_TOKEN;
@@ -122,4 +122,22 @@ export async function getTodayVisitorCount(employeeNo: number, today: string): P
   if (!currentHost) return 0;
   const reservations = await getVisitorReservations(hosts);
   return reservations.filter((item) => !item.cancelled && item.hostRecordIds.includes(currentHost.recordId) && item.visitDate === today).length;
+}
+
+
+export async function getEmployeeVisitorRequests(employeeNo: number): Promise<RequestItem[]> {
+  const hosts = await getVisitorHosts();
+  const ownHostIds = new Set(hosts.filter((host) => host.employeeNo === employeeNo).map((host) => host.recordId));
+  if (ownHostIds.size === 0) return [];
+  const reservations = await getVisitorReservations(hosts);
+  return reservations.filter((item) => item.hostRecordIds.some((id) => ownHostIds.has(id))).map((item) => ({
+    id: item.id,
+    createdAt: item.appliedDate || item.visitDate,
+    requestNo: item.reservationNo,
+    category: "visitors" as const,
+    typeLabel: "방문예약",
+    dateLabel: `${item.visitDate} ${item.visitTime}`,
+    detail: [item.company, item.location, `${item.headcount || 1}명`, item.purpose].filter(Boolean).join(" · "),
+    status: item.cancelled ? "예약취소" : "예약",
+  })).sort((a, b) => b.dateLabel.localeCompare(a.dateLabel));
 }

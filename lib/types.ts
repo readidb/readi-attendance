@@ -15,7 +15,7 @@ export interface RequestItem {
   id: string;
   createdAt: string;
   requestNo: string;
-  category: "flexible" | "overtime" | "leave";
+  category: "flexible" | "overtime" | "leave" | "visitors";
   typeLabel: string;
   dateLabel: string;
   detail: string;

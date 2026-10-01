@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import AttendanceApp from "@/components/AttendanceApp";
-import { requireActiveEmployee } from "@/lib/auth";
+import { findActiveEmployeeByKey, requireActiveEmployee } from "@/lib/auth";
 import { getEmployeeRequests, getPublishedNotices, publicEmployee } from "@/lib/data";
 import { todayInSeoul } from "@/lib/dates";
 import { getTodayVisitorCount } from "@/lib/visitors";
@@ -12,7 +12,21 @@ type Props = {
 
 export default async function Page({ searchParams }: Props) {
   const { key, error } = await searchParams;
-  if (key) redirect(`/api/auth?key=${encodeURIComponent(key)}`);
+  // Keep the personal URL while replacing a session from a different employee.
+  let employee = null;
+  if (key !== undefined) {
+    if (!key.trim() || key.length > 200) redirect("/api/auth");
+    let matches = false;
+    try {
+      const [current, keyed] = await Promise.all([requireActiveEmployee(), findActiveEmployeeByKey(key.trim())]);
+      matches = Boolean(current && keyed && current.recordId === keyed.recordId);
+      if (matches) employee = current;
+    } catch (caught) {
+      console.error("Personal access validation failed", caught);
+      redirect("/?error=server");
+    }
+    if (!matches) redirect(`/api/auth?key=${encodeURIComponent(key.trim())}`);
+  }
 
   const initialError = error === "invalid-key"
     ? "유효하지 않은 개인 접속 링크이거나 현재 재직 상태가 아닙니다."
@@ -24,7 +38,7 @@ export default async function Page({ searchParams }: Props) {
   let loadError = initialError;
   if (!initialError) {
     try {
-      const employee = await requireActiveEmployee();
+      employee = employee || await requireActiveEmployee();
       if (employee) {
         const today = todayInSeoul();
         const [requests, notices, todayVisitorCount] = await Promise.all([

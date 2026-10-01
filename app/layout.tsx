@@ -5,6 +5,7 @@ import "./visitors.css";
 export const metadata: Metadata = {
   title: "READi 근태관리",
   description: "READi 임직원 근태 신청 및 조회",
+  referrer: "no-referrer",
   robots: { index: false, follow: false },
 };
 

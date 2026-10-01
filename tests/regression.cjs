@@ -108,5 +108,14 @@ function load(file) {
   assert.equal(mapped[501].cancelled, true);
   assert.equal(await visitor.getTodayVisitorCount(12, '2026-09-30'), 1);
   assert.equal(await visitor.getTodayVisitorCount(13, '2026-09-30'), 1);
+  const myVisits = await visitor.getEmployeeVisitorRequests(13);
+  assert.deepEqual(myVisits.map((item) => item.id), ['current-visitor']);
+  assert.equal(myVisits[0].category, 'visitors');
+  assert.equal(myVisits[0].dateLabel, '2026-09-30 00:30');
+  const hostOneVisits = await visitor.getEmployeeVisitorRequests(12);
+  assert.equal(hostOneVisits.length, 502);
+  assert.equal(hostOneVisits.find((item) => item.id === 'cancelled-visitor').status, '예약취소');
+  assert.deepEqual(await visitor.getEmployeeVisitorRequests(999), []);
+  console.log('PASS: personal visitor history, multi-host inclusion, other-employee exclusion, cancellations');
   console.log('PASS: visitor pagination, Seoul date rollover, multiple hosts, cancelled notification exclusion');
 })().catch((error) => { console.error(error); process.exitCode = 1; });
