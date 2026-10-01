@@ -19,26 +19,31 @@ export async function POST(request: NextRequest) {
       throw new ApiError("연차 유형을 선택해 주세요.");
     }
     if (!isIsoDate(startDate)) throw new ApiError("시작일을 확인해 주세요.");
-    const endDate = type === "연차" ? requestedEnd : startDate;
+    const isRangeType = type === "연차" || type === "리프레시" || type === "공가";
+    const endDate = isRangeType ? requestedEnd : startDate;
     if (!isIsoDate(endDate) || startDate > endDate) throw new ApiError("종료일을 확인해 주세요.");
     if (!reason) throw new ApiError("연차 사유를 입력해 주세요.");
     if (reason.length > 300) throw new ApiError("사유는 300자 이내로 입력해 주세요.");
 
-    const days = type === "연차" ? countWeekdays(startDate, endDate) : 0.5;
+    const days = isRangeType ? countWeekdays(startDate, endDate) : 0.5;
     if (days <= 0) throw new ApiError("연차 기간에 평일이 포함되어야 합니다.");
-    if (days > employee.remainingLeave) {
+    if (type === "리프레시" && days !== 5) {
+      throw new ApiError("리프레시는 평일 기준 5일로 신청해 주세요.");
+    }
+    if ((type === "연차" || type === "오전반차" || type === "오후반차") && days > employee.remainingLeave) {
       throw new ApiError(`잔여 연차가 부족합니다. 현재 잔여 연차는 ${employee.remainingLeave}일입니다.`, 409);
     }
 
-    const employeeFormula = `FIND(${formulaString(String(employee.employeeNo))},ARRAYJOIN({${FIELDS.leave.employee}}))`;
-    const existing = await listRecords(TABLES.leave, { filterByFormula: employeeFormula, maxRecords: 100 });
+    const employeeFormula = `ARRAYJOIN({${FIELDS.leave.employee}})=${formulaString(String(employee.employeeNo))}`;
+    const existing = await listRecords(TABLES.leave, { filterByFormula: employeeFormula });
     const overlap = existing.some((record) => {
       const existingStart = String(record.fields[FIELDS.leave.startDate] ?? "");
       const existingEnd = String(record.fields[FIELDS.leave.endDate] ?? existingStart);
       const existingType = selectName(record.fields[FIELDS.leave.type]);
       if (!existingStart || !existingEnd) return false;
       if (!rangesOverlap(startDate, endDate, existingStart, existingEnd)) return false;
-      if (type === "연차" || existingType === "연차") return true;
+      const fullDayTypes = ["연차", "리프레시", "공가"];
+      if (fullDayTypes.includes(type) || fullDayTypes.includes(existingType)) return true;
       return type === existingType;
     });
     if (overlap) throw new ApiError("선택한 날짜와 겹치는 연차 신청이 있습니다.", 409);

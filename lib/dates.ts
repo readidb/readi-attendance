@@ -1,4 +1,4 @@
-import { FLEXIBLE_SCHEDULES } from "@/lib/constants";
+import { FLEXIBLE_SCHEDULES, SEOUL_TIME_ZONE } from "@/lib/constants";
 
 export function todayInSeoul(): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -22,15 +22,17 @@ export function isTime(value: unknown): value is string {
 export function calculateOvertimeHours(
   schedule: string,
   endTime: string,
-  meal: boolean,
+  externalMeal: boolean,
+  internalMeal = false,
 ): number {
   const matched = FLEXIBLE_SCHEDULES.find((item) => item === schedule);
   if (!matched || !isTime(endTime)) return 0;
   const scheduleEnd = matched.slice(-5);
   const [baseHour, baseMinute] = scheduleEnd.split(":").map(Number);
   const [endHour, endMinute] = endTime.split(":").map(Number);
-  const minutes = endHour * 60 + endMinute - (baseHour * 60 + baseMinute) - (meal ? 60 : 0);
-  return Math.max(0, Math.floor(minutes / 60));
+  const minutes = endHour * 60 + endMinute - (baseHour * 60 + baseMinute);
+  const roundedHours = Math.floor(Math.max(0, minutes) / 60);
+  return Math.max(0, roundedHours - (externalMeal ? 1 : internalMeal ? 0.5 : 0));
 }
 
 export function countWeekdays(start: string, end: string): number {
@@ -48,4 +50,36 @@ export function countWeekdays(start: string, end: string): number {
 
 export function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
   return aStart <= bEnd && bStart <= aEnd;
+}
+
+export function weekBounds(isoDate: string): { start: string; end: string } | null {
+  if (!isIsoDate(isoDate)) return null;
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  const mondayOffset = (date.getUTCDay() + 6) % 7;
+  const monday = new Date(date);
+  monday.setUTCDate(date.getUTCDate() - mondayOffset);
+  const sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+  return {
+    start: monday.toISOString().slice(0, 10),
+    end: sunday.toISOString().slice(0, 10),
+  };
+}
+
+export function nearestFlexibleSchedule(date = new Date()): string {
+  const time = new Intl.DateTimeFormat("en-GB", {
+    timeZone: SEOUL_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+  const [hour, minute] = time.split(":").map(Number);
+  const currentMinutes = hour * 60 + minute;
+  return FLEXIBLE_SCHEDULES.reduce((closest, schedule) => {
+    const [scheduleHour, scheduleMinute] = schedule.slice(0, 5).split(":").map(Number);
+    const [closestHour, closestMinute] = closest.slice(0, 5).split(":").map(Number);
+    const scheduleDistance = Math.abs(scheduleHour * 60 + scheduleMinute - currentMinutes);
+    const closestDistance = Math.abs(closestHour * 60 + closestMinute - currentMinutes);
+    return scheduleDistance < closestDistance ? schedule : closest;
+  }, FLEXIBLE_SCHEDULES[0]);
 }

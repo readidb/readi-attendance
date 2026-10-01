@@ -13,8 +13,9 @@ export interface Employee {
 
 export interface RequestItem {
   id: string;
+  createdAt: string;
   requestNo: string;
-  category: "flexible" | "overtime" | "leave";
+  category: "flexible" | "overtime" | "leave" | "visitors";
   typeLabel: string;
   dateLabel: string;
   detail: string;
@@ -40,6 +41,41 @@ export interface DashboardData {
   employee: Omit<Employee, "recordId">;
   requests: RequestItem[];
   notices: Notice[];
+  todayVisitorCount: number;
+}
+
+export interface VisitorHost {
+  recordId: string;
+  employeeNo: number;
+  name: string;
+  department: string;
+  position: string;
+  phone: string;
+}
+
+export interface VisitorReservation {
+  id: string;
+  reservationNo: string;
+  visitDate: string;
+  visitTime: string;
+  location: string;
+  department: string;
+  hostRecordIds: string[];
+  hostNames: string[];
+  hostPhones: string[];
+  company: string;
+  vehicleNo: string;
+  headcount: number;
+  purpose: string;
+  note: string;
+  appliedDate: string;
+  cancelled: boolean;
+}
+
+export interface VisitorData {
+  reservations: VisitorReservation[];
+  hosts: VisitorHost[];
+  currentHostRecordId: string;
 }
 
 export interface AirtableRecord {

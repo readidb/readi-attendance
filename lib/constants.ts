@@ -7,6 +7,39 @@ export const TABLES = {
   notices: "tblibO9m4g0oFb3rs",
 } as const;
 
+export const VISITOR_BASE_ID = "appEGOuVIDQdWnZmJ";
+
+export const VISITOR_TABLES = {
+  reservations: "tbl8jebI2LbBa9iQ5",
+  master: "tblnoO5eo1MYC4tAh",
+} as const;
+
+export const VISITOR_FIELDS = {
+  reservations: {
+    reservationNo: "fldBbFLextAy5JnX9",
+    visitAt: "fld0iZ51C0pdNTXsT",
+    location: "fldNlzdLgtsdeVJJ1",
+    department: "fldIRAmHhIbmG9euY",
+    host: "flddCLhdSdyqzVaEN",
+    hostPhone: "fldCIxA08FHHGFfvx",
+    company: "fldsl0dLziFcnYIha",
+    vehicleNo: "fldBgpV1MmjqIoYD3",
+    headcount: "fldOx0oJWgFOxqziD",
+    purpose: "fldxa9TvDpte0yl7q",
+    note: "fldog2yVmft5EhuZ3",
+    cancelled: "flded5ngp12zKmRVl",
+    appliedDate: "fld6MMFOqY6CXDywH",
+  },
+  master: {
+    employeeNo: "fldpK9rmPWq2vMK5E",
+    name: "fldeSHye8ZBp3popE",
+    department: "fldNyKSyDWNgGnAQf",
+    position: "fldLXaOe1MnlYRnvH",
+    phone: "fldpZe5dWwVT5kdjJ",
+    email: "fldx0Iub0QIs935M4",
+  },
+} as const;
+
 export const FIELDS = {
   master: {
     employeeNo: "fldVteukRJwty5Cn1",
@@ -34,11 +67,13 @@ export const FIELDS = {
     date: "fldXgf65zRLtGcOLP",
     endAt: "fldy9NgrFeokof0I2",
     hours: "fldGOYpqImp2o0rOp",
-    meal: "fldqPuT69Sntumaio",
+    internalMeal: "fldRuBu1RLnZmyvdA",
+    externalMeal: "fldqPuT69Sntumaio",
     reason: "fldbymc5dvz4f90IO",
     actualHours: "fldilw0r9U5jTZ8yw",
     validationStatus: "fldNSuvzXuwnqxkv6",
     confirmedHours: "fld5Vp4ckWT0A886e",
+    createdAt: "flddj6JjzpxZjFMSM",
   },
   leave: {
     requestNo: "fldP6nESQKAgxuM8P",
@@ -61,6 +96,10 @@ export const FIELDS = {
 } as const;
 
 export const FLEXIBLE_SCHEDULES = [
+  "05:00 ~ 14:00",
+  "05:30 ~ 14:30",
+  "06:00 ~ 15:00",
+  "06:30 ~ 15:30",
   "07:00 ~ 16:00",
   "07:30 ~ 16:30",
   "08:00 ~ 17:00",
@@ -70,5 +109,6 @@ export const FLEXIBLE_SCHEDULES = [
   "10:00 ~ 19:00",
 ] as const;
 
-export const LEAVE_TYPES = ["연차", "오전반차", "오후반차"] as const;
+export const LEAVE_TYPES = ["연차", "오전반차", "오후반차", "리프레시", "공가"] as const;
+export const STANDARD_SCHEDULE = "08:00 ~ 17:00";
 export const SEOUL_TIME_ZONE = "Asia/Seoul";

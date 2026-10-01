@@ -4,17 +4,23 @@ import type { AirtableRecord } from "@/lib/types";
 
 const AIRTABLE_API = "https://api.airtable.com/v0";
 
-function config() {
-  const token = process.env.AIRTABLE_TOKEN;
-  const baseId = process.env.AIRTABLE_BASE_ID;
+function config(baseIdOverride?: string, tokenOverride?: string) {
+  const token = tokenOverride || process.env.AIRTABLE_TOKEN;
+  const baseId = baseIdOverride || process.env.AIRTABLE_BASE_ID;
   if (!token || !baseId) {
     throw new Error("Airtable 환경변수가 설정되지 않았습니다.");
   }
   return { token, baseId };
 }
 
-async function airtableFetch(path: string, init?: RequestInit, attempt = 0): Promise<Response> {
-  const { token, baseId } = config();
+async function airtableFetch(
+  path: string,
+  init?: RequestInit,
+  attempt = 0,
+  baseIdOverride?: string,
+  tokenOverride?: string,
+): Promise<Response> {
+  const { token, baseId } = config(baseIdOverride, tokenOverride);
   const response = await fetch(`${AIRTABLE_API}/${baseId}/${path}`, {
     ...init,
     headers: {
@@ -26,19 +32,27 @@ async function airtableFetch(path: string, init?: RequestInit, attempt = 0): Pro
   });
   if (response.status === 429 && attempt < 3) {
     await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
-    return airtableFetch(path, init, attempt + 1);
+    return airtableFetch(path, init, attempt + 1, baseIdOverride, tokenOverride);
   }
   if (!response.ok) {
     const detail = await response.text();
     console.error("Airtable request failed", response.status, detail.slice(0, 500));
-    throw new Error("근태 데이터 서버와 통신하지 못했습니다.");
+    throw new Error("Airtable 데이터 서버와 통신하지 못했습니다.");
   }
   return response;
 }
 
 export async function listRecords(
   tableId: string,
-  options: { filterByFormula?: string; fields?: string[]; maxRecords?: number; sortField?: string } = {},
+  options: {
+    filterByFormula?: string;
+    fields?: string[];
+    maxRecords?: number;
+    sortField?: string;
+    sortDirection?: "asc" | "desc";
+    baseId?: string;
+    token?: string;
+  } = {},
 ): Promise<AirtableRecord[]> {
   const params = new URLSearchParams();
   params.set("returnFieldsByFieldId", "true");
@@ -46,7 +60,7 @@ export async function listRecords(
   if (options.maxRecords) params.set("maxRecords", String(options.maxRecords));
   if (options.sortField) {
     params.set("sort[0][field]", options.sortField);
-    params.set("sort[0][direction]", "desc");
+    params.set("sort[0][direction]", options.sortDirection || "desc");
   }
   options.fields?.forEach((field) => params.append("fields[]", field));
 
@@ -54,7 +68,7 @@ export async function listRecords(
   let offset: string | undefined;
   do {
     if (offset) params.set("offset", offset);
-    const response = await airtableFetch(`${tableId}?${params.toString()}`);
+    const response = await airtableFetch(`${tableId}?${params.toString()}`, undefined, 0, options.baseId, options.token);
     const data = (await response.json()) as { records: AirtableRecord[]; offset?: string };
     records.push(...data.records);
     offset = data.offset;
@@ -62,8 +76,13 @@ export async function listRecords(
   return options.maxRecords ? records.slice(0, options.maxRecords) : records;
 }
 
-export async function getRecord(tableId: string, recordId: string): Promise<AirtableRecord | null> {
-  const { token, baseId } = config();
+export async function getRecord(
+  tableId: string,
+  recordId: string,
+  baseIdOverride?: string,
+  tokenOverride?: string,
+): Promise<AirtableRecord | null> {
+  const { token, baseId } = config(baseIdOverride, tokenOverride);
   const response = await fetch(
     `${AIRTABLE_API}/${baseId}/${tableId}/${recordId}?returnFieldsByFieldId=true`,
     {
@@ -72,20 +91,36 @@ export async function getRecord(tableId: string, recordId: string): Promise<Airt
     },
   );
   if (response.status === 404) return null;
-  if (!response.ok) throw new Error("근태 데이터 서버와 통신하지 못했습니다.");
+  if (!response.ok) throw new Error("Airtable 데이터 서버와 통신하지 못했습니다.");
   return (await response.json()) as AirtableRecord;
 }
 
 export async function createRecord(
   tableId: string,
   fields: Record<string, unknown>,
+  baseId?: string,
+  token?: string,
 ): Promise<AirtableRecord> {
   const response = await airtableFetch(tableId, {
     method: "POST",
     body: JSON.stringify({ records: [{ fields }], typecast: false, returnFieldsByFieldId: true }),
-  });
+  }, 0, baseId, token);
   const data = (await response.json()) as { records: AirtableRecord[] };
   return data.records[0];
+}
+
+export async function updateRecord(
+  tableId: string,
+  recordId: string,
+  fields: Record<string, unknown>,
+  baseId?: string,
+  token?: string,
+): Promise<AirtableRecord> {
+  const response = await airtableFetch(`${tableId}/${recordId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ fields, typecast: false, returnFieldsByFieldId: true }),
+  }, 0, baseId, token);
+  return (await response.json()) as AirtableRecord;
 }
 
 export function formulaString(value: string): string {

@@ -18,7 +18,10 @@ export default function LeaveForm({ today, remainingLeave, onSuccess, onError }:
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
   const [reason, setReason] = useState("");
-  const days = type === "연차" ? countWeekdays(startDate, endDate) : 0.5;
+  const isRangeType = type === "연차" || type === "리프레시" || type === "공가";
+  const deductsLeave = type === "연차" || type === "오전반차" || type === "오후반차";
+  const days = isRangeType ? countWeekdays(startDate, endDate) : 0.5;
+  const invalidRefresh = type === "리프레시" && days !== 5;
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -28,7 +31,7 @@ export default function LeaveForm({ today, remainingLeave, onSuccess, onError }:
       const response = await fetch("/api/leave", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, startDate, endDate: type === "연차" ? endDate : startDate, reason }),
+        body: JSON.stringify({ type, startDate, endDate: isRangeType ? endDate : startDate, reason }),
       });
       const result = await response.json() as { message?: string };
       if (!response.ok) throw new Error(result.message || "신청을 등록하지 못했습니다.");
@@ -44,22 +47,24 @@ export default function LeaveForm({ today, remainingLeave, onSuccess, onError }:
   return (
     <section className="panel form-panel">
       <h2>연차 신청</h2>
-      <p className="helper">연차는 주말을 제외한 평일 기준으로 계산합니다.</p>
+      <p className="helper">연차·리프레시·공가는 주말을 제외한 평일 기준으로 계산합니다.</p>
       <form onSubmit={submit}>
         <label>유형
           <select value={type} onChange={(event) => setType(event.target.value)} required>
             {LEAVE_TYPES.map((item) => <option key={item}>{item}</option>)}
           </select>
         </label>
-        <label>시작일<input type="date" value={startDate} onChange={(event) => { setStartDate(event.target.value); if (type !== "연차") setEndDate(event.target.value); }} required /></label>
-        {type === "연차" && <label>종료일<input type="date" min={startDate} value={endDate} onChange={(event) => setEndDate(event.target.value)} required /></label>}
+        <label>시작일<input type="date" value={startDate} onChange={(event) => { setStartDate(event.target.value); if (!isRangeType) setEndDate(event.target.value); }} required /></label>
+        {isRangeType && <label>종료일<input type="date" min={startDate} value={endDate} onChange={(event) => setEndDate(event.target.value)} required /></label>}
         <label>사유<textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={300} placeholder="연차 사용 사유를 입력해 주세요." required /></label>
-        <div className={`calculation-box ${days > remainingLeave ? "over" : ""}`}>
-          <span>사용 예정</span><strong>{days}일</strong>
-          <span>현재 잔여</span><strong>{remainingLeave}일</strong>
-          {days > remainingLeave && <p>잔여 연차가 부족합니다.</p>}
+        <div className={`calculation-box ${(deductsLeave && days > remainingLeave) || invalidRefresh ? "over" : ""}`}>
+          <div className="calculation-stat"><span>신청 일수</span><strong>{days}<small>일</small></strong></div>
+          <div className="calculation-stat"><span>신청 후 잔여</span><strong>{deductsLeave ? Math.max(0, remainingLeave - days) : remainingLeave}<small>일</small></strong></div>
+          {!deductsLeave && <p className="calculation-note">{type}는 연차를 차감하지 않습니다.</p>}
+          {deductsLeave && days > remainingLeave && <p>잔여 연차가 부족합니다.</p>}
+          {invalidRefresh && <p>리프레시는 평일 기준 5일로 신청해 주세요.</p>}
         </div>
-        <LoadingButton className="primary-button" type="submit" loading={loading} disabled={days <= 0 || days > remainingLeave}>{type} 신청</LoadingButton>
+        <LoadingButton className="primary-button" type="submit" loading={loading} disabled={days <= 0 || invalidRefresh || (deductsLeave && days > remainingLeave)}>{type} 신청</LoadingButton>
       </form>
     </section>
   );
