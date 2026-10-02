@@ -69,6 +69,7 @@ export const FIELDS = {
     hours: "fldGOYpqImp2o0rOp",
     internalMeal: "fldRuBu1RLnZmyvdA",
     externalMeal: "fldqPuT69Sntumaio",
+    weekendHoliday: "fldtLf1cT7hF0FGu3",
     reason: "fldbymc5dvz4f90IO",
     actualHours: "fldilw0r9U5jTZ8yw",
     validationStatus: "fldNSuvzXuwnqxkv6",

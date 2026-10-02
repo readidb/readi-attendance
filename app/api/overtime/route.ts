@@ -49,14 +49,15 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as Record<string, unknown>;
     const date = body.date;
     const endTime = body.endTime;
-    for (const key of ["internalMeal", "externalMeal", "meal"] as const) {
-      if (body[key] !== undefined && typeof body[key] !== "boolean") {
-        throw new ApiError("식사 종류 선택값을 확인해 주세요.");
-      }
+    if (body.weekendHoliday !== undefined && typeof body.weekendHoliday !== "boolean") {
+      throw new ApiError("주말/공휴일 여부를 확인해 주세요.");
     }
-    const internalMeal = body.internalMeal === true;
-    // 배포 전에 열린 화면의 기존 meal 요청은 외부식사로 처리합니다.
-    const externalMeal = body.externalMeal === undefined ? body.meal === true : body.externalMeal === true;
+    const weekendHoliday = body.weekendHoliday === true;
+    if (body.mealChoice !== "internal" && body.mealChoice !== "external" && body.mealChoice !== "none") {
+      throw new ApiError("식사 종류를 선택해 주세요.");
+    }
+    const internalMeal = body.mealChoice === "internal";
+    const externalMeal = body.mealChoice === "external";
     const reason = typeof body.reason === "string" ? body.reason.trim() : "";
 
     if (!isIsoDate(date)) throw new ApiError("잔업 날짜를 확인해 주세요.");
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
     const context = await getOvertimeContext(employee.employeeNo, date);
     const schedule = typeof body.schedule === "string" ? body.schedule : context.schedule;
     const weeklyOvertime = context.weeklyOvertime;
-    const requestedHours = calculateOvertimeHours(schedule, endTime, externalMeal, internalMeal);
+    const requestedHours = calculateOvertimeHours(schedule, endTime, externalMeal, internalMeal, weekendHoliday);
     if (requestedHours <= 0) throw new ApiError("계산되는 잔업시간이 있어야 합니다.");
     if (weeklyOvertime + requestedHours > 12) {
       const available = Math.max(0, 12 - weeklyOvertime);
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
       [FIELDS.overtime.endAt]: `${date}T${endTime}:00+09:00`,
       [FIELDS.overtime.internalMeal]: internalMeal,
       [FIELDS.overtime.externalMeal]: externalMeal,
+      [FIELDS.overtime.weekendHoliday]: weekendHoliday,
       [FIELDS.overtime.reason]: reason,
       [FIELDS.overtime.createdAt]: new Date().toISOString(),
     });

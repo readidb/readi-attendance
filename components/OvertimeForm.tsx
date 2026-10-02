@@ -18,13 +18,13 @@ export default function OvertimeForm({ today, weeklyOvertime, onSuccess, onError
   const { loading, run } = useSubmission(onError);
   const [contextLoading, setContextLoading] = useState(true);
   const [date, setDate] = useState(today);
+  const [weekendHoliday, setWeekendHoliday] = useState(false);
   const [schedule, setSchedule] = useState(STANDARD_SCHEDULE);
   const [dateWeeklyOvertime, setDateWeeklyOvertime] = useState(weeklyOvertime);
   const [endTime, setEndTime] = useState("18:00");
-  const [internalMeal, setInternalMeal] = useState(false);
-  const [externalMeal, setExternalMeal] = useState(false);
+  const [mealChoice, setMealChoice] = useState<"internal" | "external" | "none" | "">("");
   const [reason, setReason] = useState("");
-  const hours = calculateOvertimeHours(schedule, endTime, externalMeal, internalMeal);
+  const hours = calculateOvertimeHours(schedule, endTime, mealChoice === "external", mealChoice === "internal", weekendHoliday);
   const afterTotal = dateWeeklyOvertime + hours;
 
   useEffect(() => {
@@ -49,10 +49,12 @@ export default function OvertimeForm({ today, weeklyOvertime, onSuccess, onError
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (contextLoading) return;
+    if (!mealChoice) return onError("식사 종류를 선택해 주세요.");
+    if (!reason.trim()) return onError("장소/사유를 입력해 주세요.");
     await run(async () => {
       const result = await requestJson<{ message?: string }>("/api/overtime", {
         method: "POST",
-        body: JSON.stringify({ date, schedule, endTime, internalMeal, externalMeal, reason }),
+        body: JSON.stringify({ date, schedule, endTime, mealChoice, weekendHoliday, reason: reason.trim() }),
       }, "신청을 등록하지 못했습니다.");
       setReason("");
       await onSuccess(result.message || "잔업 신청이 등록되었습니다.");
@@ -62,9 +64,16 @@ export default function OvertimeForm({ today, weeklyOvertime, onSuccess, onError
   return (
     <section className="panel form-panel">
       <h2>잔업 신청</h2>
-      <p className="helper">잔업을 1시간 단위로 내림한 뒤 사내식사는 0.5시간, 외부식사는 1시간을 차감합니다.</p>
+      <p className="helper">잔업정보를 입력해주세요.</p>
       <form onSubmit={submit}>
-        <label>날짜<input type="date" value={date} onChange={(event) => { setContextLoading(true); setSchedule(STANDARD_SCHEDULE); setDate(event.target.value); }} required /></label>
+        <div className="overtime-date-row">
+          <label>날짜<input type="date" value={date} onChange={(event) => { setContextLoading(true); setSchedule(STANDARD_SCHEDULE); setDate(event.target.value); }} required /></label>
+          <label className="checkbox-label">
+            <input type="checkbox" name="weekendHoliday" checked={weekendHoliday} onChange={(event) => setWeekendHoliday(event.target.checked)} />
+            주말/공휴일 여부
+          </label>
+        </div>
+        {weekendHoliday && <p className="helper">주말/공휴일은 출근시간부터 잔업시간을 계산합니다.</p>}
         <label>출근시간
           <select value={schedule} onChange={(event) => setSchedule(event.target.value)} disabled={contextLoading} aria-busy={contextLoading} required>
             {FLEXIBLE_SCHEDULES.map((item) => <option key={item} value={item}>{item.slice(0, 5)}</option>)}
@@ -73,19 +82,23 @@ export default function OvertimeForm({ today, weeklyOvertime, onSuccess, onError
         <p className="helper">{contextLoading ? "해당 날짜의 유연근무 시간을 확인하고 있습니다." : "해당 날짜의 유연근무 출근시간이 기본값입니다. 신청이 없으면 08:00이며 직접 변경할 수 있습니다."}</p>
         <label>퇴근시간<input type="time" step="1800" value={endTime} onChange={(event) => setEndTime(event.target.value)} required /></label>
         <fieldset className="meal-options">
-          <legend>식사 종류</legend>
+          <legend>식사 종류 (필수)</legend>
           <div className="meal-option-row">
             <label className="checkbox-label">
-              <input type="checkbox" checked={internalMeal} onChange={(event) => setInternalMeal(event.target.checked)} />
+              <input type="radio" name="mealChoice" value="internal" checked={mealChoice === "internal"} onChange={() => setMealChoice("internal")} required />
               사내식사
             </label>
             <label className="checkbox-label">
-              <input type="checkbox" checked={externalMeal} onChange={(event) => setExternalMeal(event.target.checked)} />
+              <input type="radio" name="mealChoice" value="external" checked={mealChoice === "external"} onChange={() => setMealChoice("external")} required />
               외부식사
+            </label>
+            <label className="checkbox-label">
+              <input type="radio" name="mealChoice" value="none" checked={mealChoice === "none"} onChange={() => setMealChoice("none")} required />
+              식사안함
             </label>
           </div>
         </fieldset>
-        <label>장소/사유<textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={300} placeholder="예: 2공장 / 장비 출하 준비" required /></label>
+        <label>장소/사유 (필수)<textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={300} placeholder="예: 2공장 / 장비 출하 준비" required /></label>
         <div className={`calculation-box ${afterTotal > 12 ? "over" : ""}`}>
           <div className="calculation-stat"><span>신청 잔업</span><strong>{hours}<small>h</small></strong></div>
           <div className="calculation-stat"><span>신청 후 잔여</span><strong>{Math.max(0, 12 - afterTotal)}<small>h</small></strong></div>

@@ -67,8 +67,8 @@ function calendarDays(month: string): Array<string | null> {
   const [year, monthNumber] = month.split("-").map(Number);
   const first = new Date(Date.UTC(year, monthNumber - 1, 1));
   const last = new Date(Date.UTC(year, monthNumber, 0));
-  const mondayOffset = (first.getUTCDay() + 6) % 7;
-  const days: Array<string | null> = Array.from({ length: mondayOffset }, () => null);
+  const sundayOffset = first.getUTCDay();
+  const days: Array<string | null> = Array.from({ length: sundayOffset }, () => null);
   for (let day = 1; day <= last.getUTCDate(); day += 1) {
     days.push(`${month}-${String(day).padStart(2, "0")}`);
   }
@@ -303,11 +303,11 @@ export default function VisitorManager({
               <strong>{monthTitle(month)}</strong>
               <button type="button" aria-label="다음 달" onClick={() => setMonth((value) => moveMonth(value, 1))}>›</button>
             </div>
-            <div className="calendar-weekdays">{["월", "화", "수", "목", "금", "토", "일"].map((day) => <span key={day}>{day}</span>)}</div>
+            <div className="calendar-weekdays">{["일", "월", "화", "수", "목", "금", "토"].map((day, index) => <span className={index === 0 ? "sunday" : index === 6 ? "saturday" : ""} key={day}>{day}</span>)}</div>
             <div className="calendar-grid">
               {calendarDays(month).map((date, index) => date ? (
                 <button className={`${date === selectedDate ? "selected" : ""} ${date === today ? "today" : ""}`} key={date} type="button" onClick={() => { setSelectedDate(date); setSelected(null); }}>
-                  <span>{Number(date.slice(-2))}</span>
+                  <span className={index % 7 === 0 ? "sunday" : index % 7 === 6 ? "saturday" : ""}>{Number(date.slice(-2))}</span>
                   {(byDate.get(date)?.length || 0) > 0 && <b>{byDate.get(date)?.length}</b>}
                 </button>
               ) : <span className="calendar-empty" key={`empty-${index}`} />)}

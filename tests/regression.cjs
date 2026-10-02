@@ -38,6 +38,11 @@ function load(file) {
   assert.equal(calculateOvertimeHours('08:00 ~ 17:00', '18:00', false, true), 0.5);
   assert.equal(calculateOvertimeHours('08:00 ~ 17:00', '19:30', true, true), 1);
   assert.equal(calculateOvertimeHours('08:00 ~ 17:00', '17:30', false, true), 0);
+  assert.equal(calculateOvertimeHours('08:00 ~ 17:00', '12:30', false, false, true), 4);
+  assert.equal(calculateOvertimeHours('08:00 ~ 17:00', '12:30', false, true, true), 3.5);
+  assert.equal(calculateOvertimeHours('08:00 ~ 17:00', '12:30', true, false, true), 3);
+  assert.equal(calculateOvertimeHours('05:00 ~ 14:00', '09:00', false, false, true), 4);
+  assert.equal(calculateOvertimeHours('08:00 ~ 17:00', '07:00', false, false, true), 0);
   assert.equal(countWeekdays('2026-09-04', '2026-09-07'), 2);
   assert.deepEqual(weekBounds('2026-09-10'), { start: '2026-09-07', end: '2026-09-13' });
   assert.deepEqual(weekBounds('2026-09-13'), { start: '2026-09-07', end: '2026-09-13' });
@@ -58,27 +63,41 @@ function load(file) {
   fixtures[TABLES.overtime] = [];
   const { POST } = load('app/api/overtime/route.ts');
   const submit = (mealFields) => POST({ json: async () => ({ date: '2026-09-23', endTime: '19:00', reason: '테스트', ...mealFields }) });
-  for (const internalMeal of [false, true]) {
-    for (const externalMeal of [false, true]) {
-      const response = await submit({ internalMeal, externalMeal });
-      assert.equal(response.status, 201);
-      const write = writes.at(-1);
-      assert.equal(write.fields.fldRuBu1RLnZmyvdA, internalMeal);
-      assert.equal(write.fields.fldqPuT69Sntumaio, externalMeal);
-      assert.equal((await response.json()).message, `${externalMeal ? 1 : internalMeal ? 1.5 : 2}시간 잔업 신청이 등록되었습니다.`);
-    }
+  for (const mealChoice of ['internal', 'external', 'none']) {
+    const internalMeal = mealChoice === 'internal';
+    const externalMeal = mealChoice === 'external';
+    const response = await submit({ mealChoice });
+    assert.equal(response.status, 201);
+    const write = writes.at(-1);
+    assert.equal(write.fields.fldRuBu1RLnZmyvdA, internalMeal);
+    assert.equal(write.fields.fldqPuT69Sntumaio, externalMeal);
+    assert.equal(write.fields.fldtLf1cT7hF0FGu3, false);
+    assert.equal((await response.json()).message, `${externalMeal ? 1 : internalMeal ? 1.5 : 2}시간 잔업 신청이 등록되었습니다.`);
   }
-  const halfHourResponse = await POST({ json: async () => ({ date: '2026-09-23', endTime: '18:00', internalMeal: true, externalMeal: false, reason: '테스트' }) });
+  const halfHourResponse = await POST({ json: async () => ({ date: '2026-09-23', endTime: '18:00', mealChoice: 'internal', reason: '테스트' }) });
   assert.equal(halfHourResponse.status, 201);
   assert.equal((await halfHourResponse.json()).message, '0.5시간 잔업 신청이 등록되었습니다.');
-  assert.equal((await submit({ meal: true })).status, 201);
-  assert.equal(writes.at(-1).fields.fldqPuT69Sntumaio, true);
-  assert.equal((await submit({ meal: true, externalMeal: false })).status, 201);
-  assert.equal(writes.at(-1).fields.fldqPuT69Sntumaio, false);
+  const holidayResponse = await submit({ endTime: '12:30', mealChoice: 'internal', weekendHoliday: true });
+  assert.equal(holidayResponse.status, 201);
+  assert.equal((await holidayResponse.json()).message, '3.5시간 잔업 신청이 등록되었습니다.');
+  assert.equal(writes.at(-1).fields.fldtLf1cT7hF0FGu3, true);
+  assert.equal((await submit({ mealChoice: 'none', weekendHoliday: false })).status, 201);
+  assert.equal(writes.at(-1).fields.fldtLf1cT7hF0FGu3, false);
   const writeCount = writes.length;
-  assert.equal((await submit({ internalMeal: 'true' })).status, 400);
+  for (const weekendHoliday of ['true', 1, null, []]) {
+    assert.equal((await submit({ mealChoice: 'none', weekendHoliday })).status, 400);
+  }
+  assert.equal((await submit({ endTime: '21:00', mealChoice: 'none', weekendHoliday: true })).status, 409);
+  for (const mealChoice of [undefined, null, '', 'invalid', true, ['internal', 'external']]) {
+    assert.equal((await submit({ mealChoice })).status, 400);
+  }
+  assert.equal((await submit({ internalMeal: true, externalMeal: true })).status, 400);
+  for (const reason of [undefined, null, '', '   ', '\n\t']) {
+    assert.equal((await submit({ mealChoice: 'none', reason })).status, 400);
+  }
   assert.equal(writes.length, writeCount);
-  console.log('PASS: meal checkbox combinations, field mapping, legacy requests, boolean validation');
+  console.log('PASS: three meal choices, field mapping, required meal and nonblank reason validation');
+  console.log('PASS: holiday checkbox mapping, boolean validation, start-time calculation and weekly limit');
   console.log('PASS: early schedules, meal deduction, weekend exclusion, exact employee formula, newest 100 submissions');
   // Visitor history must still include current reservations after 500 older rows.
   const { VISITOR_TABLES, VISITOR_FIELDS } = load('lib/constants.ts');

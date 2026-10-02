@@ -73,6 +73,8 @@
 }
 .calendar-grid button.today { border-color: var(--navy); }
 .calendar-grid button.selected { color: var(--text); background: var(--blue-fill); border-color: var(--navy); }
+.calendar-weekdays .sunday, .calendar-grid .sunday { color: #dc2626; }
+.calendar-weekdays .saturday, .calendar-grid .saturday { color: #2563eb; }
 .calendar-grid button b {
   position: absolute;
   right: 3px;
