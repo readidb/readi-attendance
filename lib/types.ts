@@ -64,6 +64,7 @@ export interface VisitorReservation {
   hostNames: string[];
   hostPhones: string[];
   company: string;
+  visitorName: string;
   vehicleNo: string;
   headcount: number;
   purpose: string;

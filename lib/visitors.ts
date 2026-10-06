@@ -1,5 +1,7 @@
 import "server-only";
 
+import { splitVisitorNote } from "@/lib/visitor-note";
+
 import { formulaString, listRecords, selectName } from "@/lib/airtable";
 import {
   VISITOR_BASE_ID,
@@ -87,7 +89,7 @@ function mapReservation(
     vehicleNo: text(fields[VISITOR_FIELDS.reservations.vehicleNo]),
     headcount: Number(fields[VISITOR_FIELDS.reservations.headcount] || 0),
     purpose: text(fields[VISITOR_FIELDS.reservations.purpose]),
-    note: text(fields[VISITOR_FIELDS.reservations.note]),
+    ...splitVisitorNote(text(fields[VISITOR_FIELDS.reservations.note])),
     appliedDate: text(fields[VISITOR_FIELDS.reservations.appliedDate]),
     cancelled: fields[VISITOR_FIELDS.reservations.cancelled] === true,
   };

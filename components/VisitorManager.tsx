@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LoadingButton from "@/components/LoadingButton";
 import { useSubmission } from "@/components/useSubmission";
 import { requestJson } from "@/lib/http";
@@ -15,6 +15,7 @@ type Draft = {
   location: string;
   hostRecordIds: string[];
   company: string;
+  visitorName: string;
   vehicleNo: string;
   headcount: number;
   purpose: string;
@@ -31,6 +32,7 @@ function blankDraft(today: string, hostRecordId = ""): Draft {
     location: "1공장",
     hostRecordIds: hostRecordId ? [hostRecordId] : [],
     company: "",
+    visitorName: "",
     vehicleNo: "",
     headcount: 1,
     purpose: "",
@@ -45,6 +47,7 @@ function reservationDraft(item: VisitorReservation): Draft {
     location: item.location,
     hostRecordIds: item.hostRecordIds,
     company: item.company,
+    visitorName: item.visitorName || "",
     vehicleNo: item.vehicleNo,
     headcount: item.headcount || 1,
     purpose: item.purpose,
@@ -76,8 +79,8 @@ function calendarDays(month: string): Array<string | null> {
   return days;
 }
 
-async function fetchVisitorData(signal?: AbortSignal): Promise<VisitorData> {
-  const result = await requestJson<{ data?: VisitorData }>("/api/visitors", { signal }, "방문 예약을 불러오지 못했습니다.");
+async function fetchVisitorData(apiUrl: string, signal?: AbortSignal): Promise<VisitorData> {
+  const result = await requestJson<{ data?: VisitorData }>(apiUrl, { signal }, "방문 예약을 불러오지 못했습니다.");
   if (!result.data) throw new Error("방문 예약을 불러오지 못했습니다.");
   return result.data;
 }
@@ -173,6 +176,7 @@ function ReservationCard({ item, hostsById, onOpen }: { item: VisitorReservation
       <span className="visitor-card-group">
         <span className="visitor-card-heading">방문자</span>
         <span className="visitor-card-row"><span className="visitor-card-label">소속</span><strong className="visitor-card-value">{item.company || "-"}</strong></span>
+        <span className="visitor-card-row"><span className="visitor-card-label">방문자명</span><span className="visitor-card-value">{item.visitorName || "-"}</span></span>
         <span className="visitor-card-row"><span className="visitor-card-label">목적</span><span className="visitor-card-value">{item.purpose || "-"}</span></span>
         <span className="visitor-card-row"><span className="visitor-card-label">인원</span><span className="visitor-card-value">{item.headcount || 1}명</span></span>
         {item.vehicleNo && <span className="visitor-card-row"><span className="visitor-card-label">차량번호</span><span className="visitor-card-value">{item.vehicleNo}</span></span>}
@@ -191,13 +195,51 @@ function ReservationCard({ item, hostsById, onOpen }: { item: VisitorReservation
   );
 }
 
+function DayReservationsDialog({ date, items, hostsById, onClose, onOpen, onCreate }: {
+  date: string;
+  items: VisitorReservation[];
+  hostsById: Map<string, VisitorHost>;
+  onClose: () => void;
+  onOpen: (item: VisitorReservation) => void;
+  onCreate: () => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const element = dialog.current;
+    element?.showModal();
+    return () => element?.close();
+  }, []);
+
+  return (
+    <dialog ref={dialog} className="visitor-day-dialog" aria-labelledby="visitor-day-title" onCancel={onClose} onClick={(event) => {
+      if (event.target !== event.currentTarget) return;
+      const bounds = event.currentTarget.getBoundingClientRect();
+      if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) onClose();
+    }}>
+      <div className="visitor-form-title visitor-day-heading">
+        <div><h3 id="visitor-day-title">{date} 방문 예약</h3><p className="helper">예약 {items.length}건</p></div>
+        <button type="button" onClick={onClose}>닫기</button>
+      </div>
+      <div className="visitor-list visitor-day-list">
+        {items.map((item) => <ReservationCard key={item.id} item={item} hostsById={hostsById} onOpen={() => onOpen(item)} />)}
+        {items.length === 0 && <p className="empty-text">이 날짜의 예약이 없습니다.</p>}
+      </div>
+      <div className="visitor-day-actions"><button className="primary-button" type="button" onClick={onCreate}>이 날짜에 예약 등록</button></div>
+    </dialog>
+  );
+}
+
 export default function VisitorManager({
   today,
   onNotify,
+  shared = false,
 }: {
   today: string;
   onNotify: (message: string) => void;
+  shared?: boolean;
 }) {
+  const apiUrl = shared ? "/api/visitors/calendar" : "/api/visitors";
   const [data, setData] = useState<VisitorData | null>(null);
   const [view, setView] = useState<View>("overview");
   const [loading, setLoading] = useState(true);
@@ -208,14 +250,15 @@ export default function VisitorManager({
   const [draft, setDraft] = useState<Draft>(() => blankDraft(today));
   const [month, setMonth] = useState(today.slice(0, 7));
   const [selectedDate, setSelectedDate] = useState(today);
+  const [dayOpen, setDayOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilter>("upcoming");
 
-  const load = useCallback((signal?: AbortSignal) => fetchVisitorData(signal)
+  const load = useCallback((signal?: AbortSignal) => fetchVisitorData(apiUrl, signal)
     .then((result) => { if (!signal?.aborted) setData(result); })
     .catch((error: unknown) => {
       if (!signal?.aborted) onNotify(error instanceof Error ? error.message : "방문 예약을 불러오지 못했습니다.");
     })
-    .finally(() => { if (!signal?.aborted) setLoading(false); }), [onNotify]);
+    .finally(() => { if (!signal?.aborted) setLoading(false); }), [apiUrl, onNotify]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -243,6 +286,7 @@ export default function VisitorManager({
   }), [dateFilter, reservations, today]);
 
   function beginCreate(date = today) {
+    setDayOpen(false);
     setSelected(null);
     setEditingId("");
     setDraft(blankDraft(date, data?.currentHostRecordId || ""));
@@ -250,6 +294,7 @@ export default function VisitorManager({
   }
 
   function beginEdit(item: VisitorReservation) {
+    setDayOpen(false);
     setSelected(null);
     setEditingId(item.id);
     setDraft(reservationDraft(item));
@@ -260,12 +305,14 @@ export default function VisitorManager({
     event.preventDefault();
     if (draft.hostRecordIds.length === 0) return;
     await saveRequest(async () => {
-      const result = await requestJson<{ message?: string }>("/api/visitors", {
+      const result = await requestJson<{ message?: string }>(apiUrl, {
         method: editingId ? "PATCH" : "POST",
         body: JSON.stringify({ ...draft, id: editingId || undefined }),
       }, "방문 예약을 저장하지 못했습니다.");
       onNotify(result.message || "방문 예약이 저장되었습니다.");
       await load();
+      setMonth(draft.visitDate.slice(0, 7));
+      setSelectedDate(draft.visitDate);
       setView("overview");
       setEditingId("");
     });
@@ -274,7 +321,7 @@ export default function VisitorManager({
   async function cancelReservation(item: VisitorReservation) {
     if (cancelling || !window.confirm("예약을 취소하시겠습니까? 취소된 예약은 목록에서 계속 확인할 수 있습니다.")) return;
     await cancelRequest(async () => {
-      const result = await requestJson<{ message?: string }>("/api/visitors", {
+      const result = await requestJson<{ message?: string }>(apiUrl, {
         method: "PATCH",
         body: JSON.stringify({ id: item.id, action: "cancel" }),
       }, "예약을 취소하지 못했습니다.");
@@ -290,14 +337,14 @@ export default function VisitorManager({
     <section className="panel visitor-panel">
       <div className="visitor-heading">
         <div><h2>방문 예약 관리</h2><p className="helper">예약 등록·조회·수정·취소</p></div>
-        {view === "overview" && <button className="compact-primary" type="button" onClick={() => beginCreate()}>예약 등록</button>}
+        {view === "overview" && <button className="compact-primary" type="button" disabled={loading} onClick={() => beginCreate(shared ? selectedDate : today)}>예약 등록</button>}
       </div>
 
       {loading && <div className="visitor-loading"><div className="spinner" aria-label="방문 예약 불러오는 중" /></div>}
 
       {!loading && view === "overview" && (
         <div className="visitor-overview">
-          <section className="visitor-section" aria-label="방문 예약 달력">
+          <section className="visitor-section visitor-calendar-section" aria-label="방문 예약 달력">
             <div className="calendar-heading">
               <button type="button" aria-label="이전 달" onClick={() => setMonth((value) => moveMonth(value, -1))}>‹</button>
               <strong>{monthTitle(month)}</strong>
@@ -306,20 +353,22 @@ export default function VisitorManager({
             <div className="calendar-weekdays">{["일", "월", "화", "수", "목", "금", "토"].map((day, index) => <span className={index === 0 ? "sunday" : index === 6 ? "saturday" : ""} key={day}>{day}</span>)}</div>
             <div className="calendar-grid">
               {calendarDays(month).map((date, index) => date ? (
-                <button className={`${date === selectedDate ? "selected" : ""} ${date === today ? "today" : ""}`} key={date} type="button" onClick={() => { setSelectedDate(date); setSelected(null); }}>
+                <button className={`${date === selectedDate ? "selected" : ""} ${date === today ? "today" : ""}`} key={date} type="button" aria-pressed={date === selectedDate} aria-haspopup={shared ? "dialog" : undefined} aria-label={`${date}, 예약 ${byDate.get(date)?.length || 0}건`} onClick={() => { setSelectedDate(date); setSelected(null); if (shared) setDayOpen(true); }}>
                   <span className={index % 7 === 0 ? "sunday" : index % 7 === 6 ? "saturday" : ""}>{Number(date.slice(-2))}</span>
                   {(byDate.get(date)?.length || 0) > 0 && <b>{byDate.get(date)?.length}</b>}
                 </button>
               ) : <span className="calendar-empty" key={`empty-${index}`} />)}
             </div>
-            <div className="selected-date-heading"><strong>{selectedDate}</strong></div>
-            <div className="visitor-list compact">
-              {(byDate.get(selectedDate) || []).map((item) => <ReservationCard key={item.id} item={item} hostsById={hostsById} onOpen={() => setSelected(item)} />)}
-              {(byDate.get(selectedDate) || []).length === 0 && <p className="empty-text">이 날짜의 예약이 없습니다.</p>}
-            </div>
+            {!shared && <>
+              <div className="selected-date-heading"><strong>{selectedDate}</strong></div>
+              <div className="visitor-list compact">
+                {(byDate.get(selectedDate) || []).map((item) => <ReservationCard key={item.id} item={item} hostsById={hostsById} onOpen={() => setSelected(item)} />)}
+                {(byDate.get(selectedDate) || []).length === 0 && <p className="empty-text">이 날짜의 예약이 없습니다.</p>}
+              </div>
+            </>}
           </section>
 
-          <section className="visitor-section" aria-labelledby="visitor-list-title">
+          <section className="visitor-section visitor-reservations-section" aria-labelledby="visitor-list-title">
             <div className="visitor-section-heading"><h3 id="visitor-list-title">예약 목록</h3><span>취소된 예약도 목록에 표시됩니다.</span></div>
             <div className="visitor-filters">
               {(["upcoming", "today", "all"] as DateFilter[]).map((value) => (
@@ -353,10 +402,11 @@ export default function VisitorManager({
               <input type="text" value={draft.location} onChange={(event) => setDraft({ ...draft, location: event.target.value })} maxLength={100} placeholder="방문장소를 입력해 주세요" required />
             </label>
             <label>방문업체<input value={draft.company} onChange={(event) => setDraft({ ...draft, company: event.target.value })} maxLength={150} required /></label>
+            <label>방문자명<input value={draft.visitorName} onChange={(event) => setDraft({ ...draft, visitorName: event.target.value })} maxLength={150} placeholder="방문자 이름을 입력해 주세요" /></label>
             <label>방문인원<input type="number" min="1" max="100" value={draft.headcount} onChange={(event) => setDraft({ ...draft, headcount: Number(event.target.value) })} required /></label>
             <label>방문목적<textarea value={draft.purpose} onChange={(event) => setDraft({ ...draft, purpose: event.target.value })} maxLength={500} required /></label>
             <label>차량번호<input value={draft.vehicleNo} onChange={(event) => setDraft({ ...draft, vehicleNo: event.target.value })} maxLength={50} /></label>
-            <label>비고<textarea value={draft.note} onChange={(event) => setDraft({ ...draft, note: event.target.value })} maxLength={300} placeholder="필요시 방문자명 등 입력하시기 바랍니다" /></label>
+            <label>비고<textarea value={draft.note} onChange={(event) => setDraft({ ...draft, note: event.target.value })} maxLength={300} placeholder="추가 안내사항을 입력해 주세요" /></label>
           </fieldset>
 
           <fieldset className="visitor-form-group">
@@ -375,6 +425,17 @@ export default function VisitorManager({
         </form>
       )}
 
+      {shared && dayOpen && (
+        <DayReservationsDialog
+          date={selectedDate}
+          items={byDate.get(selectedDate) || EMPTY_RESERVATIONS}
+          hostsById={hostsById}
+          onClose={() => setDayOpen(false)}
+          onOpen={(item) => { setDayOpen(false); setSelected(item); }}
+          onCreate={() => beginCreate(selectedDate)}
+        />
+      )}
+
       {selected && (
         <div className="visitor-detail-backdrop" role="presentation" onClick={() => setSelected(null)}>
           <article className="visitor-detail" role="dialog" aria-modal="true" aria-label="방문 예약 상세" onClick={(event) => event.stopPropagation()}>
@@ -384,6 +445,7 @@ export default function VisitorManager({
               <div className="visitor-detail-time"><dt>방문일시</dt><dd>{selected.visitDate} {selected.visitTime}</dd></div>
               <div><dt>예약번호</dt><dd>{selected.reservationNo || "-"}</dd></div>
               <div><dt>업체</dt><dd>{selected.company}</dd></div>
+              <div><dt>방문자명</dt><dd>{selected.visitorName || "-"}</dd></div>
               <div><dt>방문인원</dt><dd>{selected.headcount || 1}명</dd></div>
               <div><dt>방문목적</dt><dd>{selected.purpose}</dd></div>
               <div><dt>담당자</dt><dd>{selected.hostNames.join(", ") || "-"}</dd></div>

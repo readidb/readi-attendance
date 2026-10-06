@@ -1,0 +1,78 @@
+.shared-visitor-calendar {
+  width: 100%;
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: clamp(12px, 2vw, 28px);
+}
+.shared-visitor-header { flex: none; margin-bottom: 16px; }
+.shared-visitor-header h1 { margin: 0 0 8px; font-size: clamp(22px, 3vw, 30px); }
+.shared-visitor-header p { margin: 0; color: var(--muted); line-height: 1.6; }
+.shared-visitor-calendar .visitor-panel { min-width: 0; margin: 0; padding: clamp(12px, 1.5vw, 22px); }
+.shared-visitor-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: var(--blue-soft);
+  border: 1px solid var(--sky);
+  border-radius: 12px;
+}
+.shared-visitor-message span { overflow-wrap: anywhere; }
+.shared-visitor-message button { flex: none; padding: 8px; background: transparent; border: 0; cursor: pointer; }
+.shared-visitor-calendar .visitor-detail-backdrop { align-items: center; padding: 12px; }
+.shared-visitor-calendar .visitor-detail { max-height: calc(100dvh - 24px); }
+.shared-visitor-calendar .visitor-card-value { white-space: pre-wrap; overflow-wrap: anywhere; }
+.shared-visitor-calendar .visitor-heading { flex: none; flex-wrap: wrap; }
+.shared-visitor-calendar .visitor-list-time { font-size: clamp(16px, 1.4vw, 20px); }
+.shared-visitor-calendar .calendar-grid button, .shared-visitor-calendar .calendar-empty {
+  aspect-ratio: auto;
+  min-height: 40px;
+  height: clamp(40px, 9vh, 90px);
+}
+.visitor-day-dialog {
+  width: min(760px, calc(100% - 24px));
+  max-width: none;
+  max-height: calc(100dvh - 24px);
+  padding: 0;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 18px 50px rgba(5, 20, 45, 0.24);
+  overflow: hidden;
+}
+.visitor-day-dialog[open] { display: flex; flex-direction: column; }
+.visitor-day-dialog::backdrop { background: rgba(11, 22, 39, 0.45); }
+.visitor-day-heading { flex: none; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+.visitor-day-heading h3 { font-size: clamp(16px, 2vw, 20px); }
+.visitor-day-heading .helper { margin: 6px 0 0; }
+.visitor-day-list { min-height: 0; padding: 16px 20px; overflow-y: auto; overscroll-behavior: contain; }
+.visitor-day-actions { flex: none; padding: 14px 20px; border-top: 1px solid var(--line); }
+.shared-visitor-calendar:has(.visitor-day-dialog[open], .visitor-detail-backdrop) { overscroll-behavior: contain; }
+
+@media (min-width: 850px) {
+  .shared-visitor-calendar .visitor-overview { grid-template-columns: minmax(0, 1.3fr) minmax(320px, 1fr); align-items: stretch; }
+  .shared-visitor-calendar .visitor-section { padding: clamp(12px, 1.3vw, 20px); }
+  .shared-visitor-calendar .visitor-reservations-section > .visitor-list { max-height: calc(100dvh - 280px); overflow-y: auto; align-content: start; }
+  .shared-visitor-calendar .visitor-form { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: start; }
+  .shared-visitor-calendar .visitor-form-title, .shared-visitor-calendar .visitor-form > .primary-button { grid-column: 1 / -1; }
+}
+@media (min-width: 850px) and (min-height: 600px) {
+  .shared-visitor-calendar { display: flex; flex-direction: column; height: 100dvh; }
+  .shared-visitor-calendar .visitor-panel { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow-y: auto; }
+  .shared-visitor-calendar .visitor-overview { flex: 1; min-height: 0; }
+  .shared-visitor-calendar .visitor-section { display: flex; flex-direction: column; min-height: 0; }
+  .shared-visitor-calendar .visitor-reservations-section > .visitor-list { flex: 1; min-height: 0; max-height: none; }
+  .shared-visitor-calendar .calendar-grid { flex: 1; min-height: 0; grid-auto-rows: minmax(36px, 1fr); }
+  .shared-visitor-calendar .calendar-grid button, .shared-visitor-calendar .calendar-empty { height: auto; min-height: 36px; }
+  .shared-visitor-calendar .calendar-heading, .shared-visitor-calendar .calendar-weekdays,
+  .shared-visitor-calendar .visitor-section-heading, .shared-visitor-calendar .visitor-filters { flex: none; }
+}
+@media (max-width: 600px) {
+  .shared-visitor-calendar { padding: 20px 12px; }
+  .shared-visitor-header { margin-bottom: 18px; }
+  .shared-visitor-calendar .visitor-list-time { font-size: 17px; }
+  .visitor-day-heading, .visitor-day-list, .visitor-day-actions { padding: 14px; }
+}
