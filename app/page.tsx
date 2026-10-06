@@ -1,30 +1,20 @@
 import { redirect } from "next/navigation";
 import AttendanceApp from "@/components/AttendanceApp";
-import { findActiveEmployeeByKey, requireActiveEmployee } from "@/lib/auth";
+import { requireActiveEmployee } from "@/lib/auth";
 import { getDashboardData } from "@/lib/data";
 import { todayInSeoul } from "@/lib/dates";
 import type { DashboardData } from "@/lib/types";
 
 type Props = {
-  searchParams: Promise<{ key?: string; error?: string }>;
+  searchParams: Promise<{ key?: string | string[]; error?: string }>;
 };
 
 export default async function Page({ searchParams }: Props) {
   const { key, error } = await searchParams;
-  // Keep the personal URL while replacing a session from a different employee.
-  let employee = null;
+  // Explicit personal links always authenticate and replace the session in the route handler.
   if (key !== undefined) {
-    if (!key.trim() || key.length > 200) redirect("/api/auth");
-    let matches = false;
-    try {
-      const [current, keyed] = await Promise.all([requireActiveEmployee(), findActiveEmployeeByKey(key.trim())]);
-      matches = Boolean(current && keyed && current.recordId === keyed.recordId);
-      if (matches) employee = current;
-    } catch (caught) {
-      console.error("Personal access validation failed", caught);
-      redirect("/?error=server");
-    }
-    if (!matches) redirect(`/api/auth?key=${encodeURIComponent(key.trim())}`);
+    if (typeof key !== "string" || !key.trim() || key.length > 200) redirect("/api/auth");
+    redirect(`/api/auth?key=${encodeURIComponent(key.trim())}`);
   }
 
   const initialError = error === "invalid-key"
@@ -37,7 +27,7 @@ export default async function Page({ searchParams }: Props) {
   let loadError = initialError;
   if (!initialError) {
     try {
-      employee = employee || await requireActiveEmployee();
+      const employee = await requireActiveEmployee();
       if (employee) {
         initialData = await getDashboardData(employee);
       }

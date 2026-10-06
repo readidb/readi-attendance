@@ -7,7 +7,7 @@ import { formulaString, getRecord, listRecords, selectName } from "@/lib/airtabl
 import type { Employee } from "@/lib/types";
 
 const COOKIE_NAME = "readi_session";
-const SESSION_SECONDS = 60 * 60 * 24 * 14;
+const SESSION_SECONDS = 60 * 60 * 24 * 180;
 
 interface SessionPayload {
   employeeRecordId: string;

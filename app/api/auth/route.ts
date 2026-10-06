@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL("/?error=invalid-key", request.url));
     }
     await setEmployeeSession(employee.recordId);
-    return NextResponse.redirect(new URL(`/?key=${encodeURIComponent(key)}`, request.url));
+    return NextResponse.redirect(new URL("/", request.url));
   } catch (error) {
     console.error(error);
     return NextResponse.redirect(new URL("/?error=server", request.url));
