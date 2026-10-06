@@ -1,6 +1,6 @@
 import "server-only";
 
-import { FIELDS, TABLES } from "@/lib/constants";
+import { FIELDS, SEOUL_TIME_ZONE, TABLES } from "@/lib/constants";
 import { formulaString, listRecords, selectName } from "@/lib/airtable";
 import { todayInSeoul } from "@/lib/dates";
 import { getTodayVisitorCount } from "@/lib/visitors";
@@ -14,6 +14,23 @@ function text(value: unknown): string {
   return value == null ? "" : String(value);
 }
 
+const overtimeTimeFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: SEOUL_TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+function overtimeDetail(fields: Record<string, unknown>): string {
+  const startTime = selectName(fields[FIELDS.overtime.schedule]).match(/^\s*(\d{2}:\d{2})/)?.[1];
+  const endAt = new Date(text(fields[FIELDS.overtime.endAt]));
+  const hours = Number(fields[FIELDS.overtime.hours] ?? 0);
+  const timeLabel = startTime && !Number.isNaN(endAt.valueOf())
+    ? `${startTime}~${overtimeTimeFormatter.format(endAt)}(${hours}h)`
+    : `${hours}h`;
+  return [timeLabel, text(fields[FIELDS.overtime.reason])].filter(Boolean).join(" ");
+}
+
 export async function getEmployeeRequests(employeeNo: number): Promise<RequestItem[]> {
   const [flexible, overtime, leave] = await Promise.all([
     listRecords(TABLES.flexible, {
@@ -22,7 +39,7 @@ export async function getEmployeeRequests(employeeNo: number): Promise<RequestIt
     }),
     listRecords(TABLES.overtime, {
       filterByFormula: employeeFormula(employeeNo, FIELDS.overtime.employee),
-      fields: [FIELDS.overtime.requestNo, FIELDS.overtime.date, FIELDS.overtime.hours, FIELDS.overtime.reason, FIELDS.overtime.validationStatus],
+      fields: [FIELDS.overtime.requestNo, FIELDS.overtime.date, FIELDS.overtime.schedule, FIELDS.overtime.endAt, FIELDS.overtime.hours, FIELDS.overtime.reason, FIELDS.overtime.validationStatus],
     }),
     listRecords(TABLES.leave, {
       filterByFormula: employeeFormula(employeeNo, FIELDS.leave.employee),
@@ -49,7 +66,7 @@ export async function getEmployeeRequests(employeeNo: number): Promise<RequestIt
       category: "overtime" as const,
       typeLabel: "잔업",
       dateLabel: text(record.fields[FIELDS.overtime.date]),
-      detail: `${Number(record.fields[FIELDS.overtime.hours] ?? 0)}h · ${text(record.fields[FIELDS.overtime.reason])}`,
+      detail: overtimeDetail(record.fields),
       status: text(record.fields[FIELDS.overtime.validationStatus]),
     })),
     ...leave.map((record) => {
