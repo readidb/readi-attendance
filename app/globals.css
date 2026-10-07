@@ -196,6 +196,10 @@ img { max-width: 100%; }
   cursor: pointer;
 }
 .form-panel input[type="date"], .form-panel input[type="time"] {
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  overflow: hidden;
   text-align: left;
 }
 .form-panel input::-webkit-date-and-time-value { min-width: 0; text-align: left; }
@@ -228,7 +232,8 @@ img { max-width: 100%; }
   background-size: 18px;
 }
 .checkbox-label input:focus-visible { outline: 2px solid var(--navy); outline-offset: 3px; }
-.overtime-date-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px 16px; }
+.overtime-date-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; min-width: 0; width: 100%; align-items: end; gap: 8px 16px; }
+.overtime-date-row > label:first-child { width: 100%; }
 .overtime-date-row .checkbox-label { min-height: 46px; }
 .calculation-box {
   display: grid;
