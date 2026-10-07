@@ -20,7 +20,15 @@ function load(file) {
       createRecord: async (table, fields) => { writes.push({ table, fields }); return {}; },
       formulaString: (value) => `'${value}'`,
       selectName: (value) => typeof value === 'string' ? value : '',
-      listRecords: async (table, options) => { calls.push(options); return fixtures[table] || []; },
+      listRecords: async (table, options) => {
+        calls.push(options);
+        const records = fixtures[table] || [];
+        if (file === 'app/api/overtime/route.ts' && options.maxRecords === 1) {
+          const { FIELDS } = load('lib/constants.ts');
+          return records.filter((record) => options.filterByFormula.includes(`{${FIELDS.overtime.date}}='${record.fields[FIELDS.overtime.date]}'`)).slice(0, 1);
+        }
+        return records;
+      },
     };
     return name.startsWith('@/') ? load(name.slice(2) + '.ts') : require(name);
   };
@@ -83,11 +91,27 @@ function load(file) {
   assert.equal(writes.at(-1).fields.fldtLf1cT7hF0FGu3, true);
   assert.equal((await submit({ mealChoice: 'none', weekendHoliday: false })).status, 201);
   assert.equal(writes.at(-1).fields.fldtLf1cT7hF0FGu3, false);
+  // Requests at and beyond the weekly allowance must still reach storage.
+  for (const weeklyHours of [10, 12, 14]) {
+    fixtures[TABLES.overtime] = [{
+      id: 'existing-overtime', createdTime: '2026-09-21T00:00:00Z',
+      fields: { [FIELDS.overtime.date]: '2026-09-21', [FIELDS.overtime.hours]: weeklyHours },
+    }];
+    const before = writes.length;
+    assert.equal((await submit({ mealChoice: 'none' })).status, 201);
+    assert.equal(writes.length, before + 1);
+  }
+  fixtures[TABLES.overtime][0].fields[FIELDS.overtime.date] = '2026-09-23';
+  const beforeDuplicate = writes.length;
+  assert.equal((await submit({ mealChoice: 'none' })).status, 409, 'same-date duplicates remain blocked even over the allowance');
+  assert.equal(writes.length, beforeDuplicate);
+  fixtures[TABLES.overtime] = [];
+  assert.equal((await submit({ endTime: '21:00', mealChoice: 'none', weekendHoliday: true })).status, 201);
   const writeCount = writes.length;
   for (const weekendHoliday of ['true', 1, null, []]) {
     assert.equal((await submit({ mealChoice: 'none', weekendHoliday })).status, 400);
   }
-  assert.equal((await submit({ endTime: '21:00', mealChoice: 'none', weekendHoliday: true })).status, 409);
+  assert.equal((await submit({ endTime: '17:00', mealChoice: 'none' })).status, 400, 'zero overtime remains invalid');
   for (const mealChoice of [undefined, null, '', 'invalid', true, ['internal', 'external']]) {
     assert.equal((await submit({ mealChoice })).status, 400);
   }
@@ -97,7 +121,7 @@ function load(file) {
   }
   assert.equal(writes.length, writeCount);
   console.log('PASS: three meal choices, field mapping, required meal and nonblank reason validation');
-  console.log('PASS: holiday checkbox mapping, boolean validation, start-time calculation and weekly limit');
+  console.log('PASS: holiday checkbox mapping, boolean validation, start-time calculation, over-allowance requests and duplicate protection');
   console.log('PASS: early schedules, meal deduction, weekend exclusion, exact employee formula, newest 100 submissions');
   // Visitor history must still include current reservations after 500 older rows.
   const { VISITOR_TABLES, VISITOR_FIELDS } = load('lib/constants.ts');

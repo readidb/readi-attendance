@@ -101,10 +101,10 @@ export default function OvertimeForm({ today, weeklyOvertime, onSuccess, onError
         <label>장소/사유 (필수)<textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={300} placeholder="예: 2공장 / 장비 출하 준비" required /></label>
         <div className={`calculation-box ${afterTotal > 12 ? "over" : ""}`}>
           <div className="calculation-stat"><span>신청 잔업</span><strong>{hours}<small>h</small></strong></div>
-          <div className="calculation-stat"><span>신청 후 잔여</span><strong>{Math.max(0, 12 - afterTotal)}<small>h</small></strong></div>
-          {afterTotal > 12 && <p>주간 잔업 가능시간을 초과하여 신청할 수 없습니다.</p>}
+          <div className="calculation-stat"><span>신청 후 잔여</span><strong>{12 - afterTotal}<small>h</small></strong></div>
+          {afterTotal > 12 && <p>주간 잔업 가능시간을 {afterTotal - 12}시간 초과합니다.</p>}
         </div>
-        <LoadingButton className="primary-button" type="submit" loading={loading} disabled={contextLoading || hours <= 0 || afterTotal > 12}>잔업 신청</LoadingButton>
+        <LoadingButton className="primary-button" type="submit" loading={loading} disabled={contextLoading || hours <= 0}>잔업 신청</LoadingButton>
       </form>
     </section>
   );

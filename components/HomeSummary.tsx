@@ -29,7 +29,7 @@ export default function HomeSummary({ data, onNavigate }: Props) {
           </article>
           <article className={`metric-card ${overtimeClass}`} title={employee.remainingOvertimeLabel}>
             <span>잔여 가능</span>
-            <strong>{Math.max(0, 12 - employee.weeklyOvertime)}<small>h</small></strong>
+            <strong>{12 - employee.weeklyOvertime}<small>h</small></strong>
           </article>
           <article className="metric-card">
             <span>잔여 연차</span>
