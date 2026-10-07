@@ -169,7 +169,7 @@ img { max-width: 100%; }
 
 .form-panel form { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 15px; }
 .form-panel label { min-width: 0; max-width: 100%; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; font-size: 14px; font-weight: 700; }
-.form-panel input:not([type="checkbox"]),
+.form-panel input:not([type="checkbox"]):not([type="radio"]),
 .form-panel select,
 .form-panel textarea {
   display: block;
@@ -206,9 +206,29 @@ img { max-width: 100%; }
   box-shadow: 0 0 0 3px rgba(24, 75, 122, 0.12);
 }
 .checkbox-label { display: flex !important; grid-template-columns: auto 1fr; align-items: center; width: fit-content; cursor: pointer; }
-.checkbox-label input { width: 22px; height: 22px; margin: 0; accent-color: var(--navy); }
-.overtime-date-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 16px; }
-.overtime-date-row > label:first-child { flex: 1 1 150px; }
+.checkbox-label input {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--sky);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.checkbox-label input:checked {
+  background-color: var(--navy);
+  border-color: var(--navy);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4 10-10'/%3E%3C/svg%3E");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 18px;
+}
+.checkbox-label input:focus-visible { outline: 2px solid var(--navy); outline-offset: 3px; }
+.overtime-date-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px 16px; }
 .overtime-date-row .checkbox-label { min-height: 46px; }
 .calculation-box {
   display: grid;
@@ -341,6 +361,10 @@ img { max-width: 100%; }
   .app-shell { border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
   .app-header { padding-left: 24px; padding-right: 24px; }
   .page-content { padding-left: 24px; padding-right: 24px; }
+}
+
+@media (max-width: 480px) {
+  .overtime-date-row { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 360px) {
